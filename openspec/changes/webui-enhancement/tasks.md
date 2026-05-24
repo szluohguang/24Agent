@@ -17,7 +17,7 @@
 
 - [x] 3.1 创建 `components/ScheduleManager.tsx`：调度任务列表（表格：描述/cron 表达式/启用开关/上次触发/下次触发）
 - [x] 3.2 创建 `components/ScheduleForm.tsx`：创建/编辑调度表单（描述/cron/权限/预算/重试次数）
-- [ ] 3.3 实现 cron 日历预览：输入 cron 表达式时计算并展示未来 5 次触发时间（使用 `cronstrue` 或手动计算）
+- [x] 3.3 实现 cron 日历预览：输入 cron 表达式时计算并展示未来 5 次触发时间（使用 `cronstrue` 或手动计算）
 - [x] 3.4 实现调度 API 调用：对接 `GET/POST/PUT/DELETE /api/schedule`
 - [x] 3.5 修改 `App.tsx`：新增 "调度管理" 标签页，集成 ScheduleManager
 - [x] 3.6 补充翻译 id：所有调度相关文本加入 zh-CN.json 和 en-US.json

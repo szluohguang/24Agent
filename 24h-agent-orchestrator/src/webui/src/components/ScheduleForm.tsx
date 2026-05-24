@@ -9,6 +9,8 @@ interface ScheduleFormData {
   maxRetries: number
 }
 
+import { computeNextCronRuns } from '../cron-utils.js'
+
 export function ScheduleForm({ onSubmit, initial }: { onSubmit: (data: ScheduleFormData) => void; initial?: ScheduleFormData }) {
   const [desc, setDesc] = useState(initial?.description || '')
   const [cron, setCron] = useState(initial?.cronExpr || '')
@@ -20,8 +22,8 @@ export function ScheduleForm({ onSubmit, initial }: { onSubmit: (data: ScheduleF
   const computePreview = (expr: string) => {
     if (!expr.trim()) { setPreview([]); return }
     try {
-      // simple cron preview: just show the expression
-      setPreview([`Next: ${expr}`])
+      const dates = computeNextCronRuns(expr, 5)
+      setPreview(dates)
     } catch {
       setPreview([])
     }
