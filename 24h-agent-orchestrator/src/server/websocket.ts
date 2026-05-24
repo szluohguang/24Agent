@@ -65,6 +65,21 @@ function handleWsMessage(
     case 'set-permission':
       orchestrator.setPermissionLevel(msg.level as 'trusted' | 'safe' | 'strict')
       break
+    case 'schedule-task':
+      orchestrator.addSchedule(
+        msg.description as string,
+        msg.cronExpr as string,
+        msg.permission as 'trusted' | 'safe' | 'strict' | undefined,
+      )
+      socket.send(JSON.stringify({ type: 'schedule-created', success: true }))
+      break
+    case 'list-schedules':
+      socket.send(JSON.stringify({ type: 'schedules', schedules: orchestrator.getSchedules() }))
+      break
+    case 'delete-schedule':
+      orchestrator.deleteSchedule(msg.id as string)
+      socket.send(JSON.stringify({ type: 'schedule-deleted', id: msg.id }))
+      break
     default:
       socket.send(JSON.stringify({ type: 'error', message: `unknown type: ${msg.type}` }))
   }

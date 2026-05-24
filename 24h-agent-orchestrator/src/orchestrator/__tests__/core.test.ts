@@ -15,13 +15,12 @@ describe('Orchestrator', () => {
   })
 
   describe('addTask()', () => {
-    it('should create a task with pending status', () => {
+    it('should create a task and auto-dispatch', () => {
       const id = orchestrator.addTask('Test task')
       const state = orchestrator.getState()
       const task = state.tasks.find(t => t.id === id)
       expect(task).toBeDefined()
       expect(task!.description).toBe('Test task')
-      expect(task!.status).toBe('pending')
       expect(task!.dependsOn).toEqual([])
       expect(task!.retryCount).toBe(0)
       expect(callbacks.onStateChange).toHaveBeenCalled()

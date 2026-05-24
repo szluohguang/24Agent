@@ -11,6 +11,7 @@ export interface EventHandlers {
   onSessionError?: (sessionId: string, error: unknown) => void
   onTimeline?: (entry: TimelineEntry) => void
   onAgentStateChange?: (sessionId: string, state: Partial<AgentState>) => void
+  onAnyEvent?: (sessionId: string) => void
 }
 
 /**
@@ -40,6 +41,8 @@ export async function subscribeGlobalEvents(
 
       const type = payload.type as string | undefined
       const sessionId = (payload.sessionID as string) || ''
+
+      handlers.onAnyEvent?.(sessionId)
 
       switch (type) {
         case 'session.next.text.delta':

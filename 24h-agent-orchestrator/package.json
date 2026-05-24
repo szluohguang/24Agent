@@ -11,12 +11,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test --config src/webui/e2e/playwright.config.ts"
+    "test:e2e": "playwright test --config src/webui/e2e/playwright.config.ts",
+    "db:migrate": "echo 'No migrations yet. Tables are auto-created on startup.'"
   },
   "dependencies": {
     "@fastify/websocket": "^11.0.0",
     "@opencode-ai/sdk": "^1.15.10",
+    "better-sqlite3": "^12.10.0",
     "fastify": "^5.0.0",
+    "node-cron": "^4.2.1",
     "react": "^19.0.0",
     "react-arborist": "^3.4.0",
     "react-dom": "^19.0.0",

@@ -35,6 +35,10 @@ function createMockOrchestrator(): Orchestrator {
     setMaxParallel: vi.fn() as unknown as Orchestrator['setMaxParallel'],
     start: async () => {},
     stop: () => {},
+    addSchedule: vi.fn() as unknown as Orchestrator['addSchedule'],
+    getSchedules: vi.fn(() => []) as unknown as Orchestrator['getSchedules'],
+    updateSchedule: vi.fn() as unknown as Orchestrator['updateSchedule'],
+    deleteSchedule: vi.fn() as unknown as Orchestrator['deleteSchedule'],
   } as unknown as Orchestrator
 }
 
@@ -60,7 +64,7 @@ describe('HTTP Server', () => {
     it('GET /health returns ok status', async () => {
       const res = await app.inject({ method: 'GET', url: '/health' })
       expect(res.statusCode).toBe(200)
-      expect(res.json()).toEqual({ status: 'ok' })
+      expect(res.json()).toMatchObject({ status: 'ok', db: 'connected' })
     })
 
     it('GET /api/state returns orchestrator state', async () => {

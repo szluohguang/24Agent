@@ -1,8 +1,13 @@
 import type { OpencodeClient } from '@opencode-ai/sdk/v2'
-import type { TaskState, AgentState, TimelineEntry, PermissionLevel } from './types.js'
+import type Database from 'better-sqlite3'
+import type { TaskState, AgentState, TimelineEntry, PermissionLevel, ScheduledTask, HealthStatus } from './types.js'
 import { createSubAgentSession, sendTaskPrompt, abortSession } from './acp-manager.js'
 import { evaluateTaskCompletion } from '../observer/evaluator.js'
 import { subscribeGlobalEvents, type EventHandlers } from '../observer/event-stream.js'
+import { Store } from './store.js'
+import { HealthMonitor } from './health-monitor.js'
+import { Scheduler } from './scheduler.js'
+import { Recovery } from './recovery.js'
 
 /** 编排器状态变更时触发的回调，用于广播到 WebSocket 客户端 */
 export interface OrchestratorCallbacks {
@@ -12,12 +17,6 @@ export interface OrchestratorCallbacks {
   onAgentStateChange: (sessionId: string, state: Partial<AgentState>) => void
 }
 
-/**
- * Orchestrator 核心类：
- * - 管理任务生命周期（add → dispatch → complete/fail）
- * - 订阅 SSE 事件驱动状态转换
- * - 自动重试、预算控制、并行度限制
- */
 export class Orchestrator {
   private client: OpencodeClient
   private tasks: Map<string, TaskState> = new Map()
@@ -30,13 +29,66 @@ export class Orchestrator {
   private abortSignal: AbortController | null = null
   private callbacks: OrchestratorCallbacks
   private eventHandlers: EventHandlers
+  private store: Store
+  private healthMonitor: HealthMonitor
+  private scheduler: Scheduler
+  private recovery: Recovery
+  private db: Database.Database
 
-  constructor(client: OpencodeClient, callbacks: OrchestratorCallbacks) {
+  constructor(client: OpencodeClient, callbacks: OrchestratorCallbacks, database: Database.Database) {
     this.client = client
     this.callbacks = callbacks
+    this.db = database
+    this.store = new Store(database)
 
-    // 注册 SSE 事件处理器：流式输出推送 WebUI，idle/error 触发后续逻辑
-    this.eventHandlers = {
+    // 从持久化加载配置
+    this.loadConfig()
+
+    // 健康监控
+    this.healthMonitor = new HealthMonitor(
+      {
+        onSessionHung: (sessionId) => this.handleHungSession(sessionId),
+        onSseStale: () => this.recovery.attemptReconnect(),
+      },
+      async (sessionId) => {
+        try {
+          const agent = this.agents.get(sessionId)
+          return agent !== undefined && agent.status !== 'error'
+        } catch {
+          return false
+        }
+      },
+    )
+
+    // 调度器
+    this.scheduler = new Scheduler(
+      async (description, dependsOn) => this.addTask(description, dependsOn),
+      async (taskId) => this.dispatchTask(taskId),
+      {
+        onTaskReady: (taskId) => this.scheduler.enqueue(taskId),
+        onScheduleTriggered: (description) => {
+          this.addTask(description)
+        },
+      },
+      this.maxParallel,
+    )
+
+    // 恢复器
+    this.recovery = new Recovery(
+      client,
+      this.createEventHandlers(),
+      this.store,
+      {
+        onTaskRecovered: (taskId) => this.scheduler.enqueue(taskId),
+        onSseReconnected: () => console.log('[recovery] SSE reconnected'),
+      },
+    )
+
+    this.eventHandlers = this.createEventHandlers()
+  }
+
+  private createEventHandlers(): EventHandlers {
+    return {
       onTextDelta: (sessionId, delta) => {
         const agent = this.agents.get(sessionId)
         if (agent) {
@@ -48,6 +100,9 @@ export class Orchestrator {
         const agent = this.agents.get(sessionId)
         if (agent) {
           agent.status = 'idle'
+          agent.healthStatus = 'healthy'
+          agent.lastHeartbeat = Date.now()
+          this.store.updateAgent(agent)
           this.callbacks.onAgentStateChange(sessionId, { status: 'idle' })
           this.handleSessionComplete(sessionId)
         }
@@ -56,25 +111,54 @@ export class Orchestrator {
         const agent = this.agents.get(sessionId)
         if (agent) {
           agent.status = 'error'
+          agent.healthStatus = 'dead'
+          this.store.updateAgent(agent)
           this.callbacks.onAgentStateChange(sessionId, { status: 'error' })
           this.handleSessionError(sessionId, error)
         }
       },
+      onTimeline: (entry) => {
+        this.addTimeline(entry.source, entry.sessionId || '', entry.type, entry.message)
+      },
+      onAnyEvent: (sessionId) => {
+        if (sessionId) this.healthMonitor.notifySessionEvent(sessionId)
+        this.healthMonitor.onSseEvent()
+      },
     }
+  }
+
+  private loadConfig() {
+    const permission = this.store.getConfig('permissionLevel')
+    if (permission) this.permissionLevel = permission as PermissionLevel
+
+    const budget = this.store.getConfig('budgetLimit')
+    if (budget) this.budgetLimit = parseFloat(budget)
+
+    const parallel = this.store.getConfig('maxParallel')
+    if (parallel) this.maxParallel = parseInt(parallel, 10)
   }
 
   async start() {
     this.abortSignal = new AbortController()
+    this.recovery.setAbortSignal(this.abortSignal.signal)
+
     subscribeGlobalEvents(this.client, this.eventHandlers, this.abortSignal.signal)
+    this.healthMonitor.start()
+
+    // 启动时恢复未完成任务
+    await this.recovery.recoverStartupTasks(async (taskId) => this.dispatchTask(taskId))
+
     this.addTimeline('system', 'system', 'start', 'Orchestrator started')
   }
 
   stop() {
     this.abortSignal?.abort()
+    this.healthMonitor.stop()
+    this.scheduler.stopAllCronJobs()
+    this.recovery.stop()
     this.addTimeline('system', 'system', 'stop', 'Orchestrator stopped')
   }
 
-  /** 获取当前完整状态，用于 WebUI 初始化和 REST API */
   getState() {
     return {
       tasks: Array.from(this.tasks.values()),
@@ -84,28 +168,43 @@ export class Orchestrator {
     }
   }
 
-  setPermissionLevel(level: PermissionLevel) { this.permissionLevel = level }
-  setBudgetLimit(limit: number) { this.budgetLimit = limit }
-  setMaxParallel(count: number) { this.maxParallel = count }
+  setPermissionLevel(level: PermissionLevel) {
+    this.permissionLevel = level
+    this.store.setConfig('permissionLevel', level)
+  }
 
-  /** 创建新任务（不自动分发），返回 taskId */
+  setBudgetLimit(limit: number) {
+    this.budgetLimit = limit
+    this.store.setConfig('budgetLimit', String(limit))
+  }
+
+  setMaxParallel(count: number) {
+    this.maxParallel = count
+    this.scheduler.setMaxParallel(count)
+    this.store.setConfig('maxParallel', String(count))
+  }
+
   addTask(description: string, dependsOn: string[] = []) {
     const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const now = Date.now()
+
+    // DAG 循环依赖检测
+    this.scheduler.validateDag(id, dependsOn)
+
     const task: TaskState = {
-      id,
-      description,
-      status: 'pending',
-      dependsOn,
-      retryCount: 0,
-      maxRetries: 10,
+      id, description, status: 'pending', dependsOn,
+      retryCount: 0, maxRetries: 10, createdAt: now, updatedAt: now,
+      priority: 0, permission: this.permissionLevel, budget: this.budgetLimit,
     }
     this.tasks.set(id, task)
+    this.store.insertTask(task)
+    this.scheduler.registerTask(task)
+    this.scheduler.enqueue(id)
     this.addTimeline('system', 'system', 'task-add', `Task added: ${description}`)
     this.callbacks.onStateChange()
     return id
   }
 
-  /** 分发任务：创建 ACP 会话 → 发送 prompt → 开始监听 */
   async dispatchTask(taskId: string) {
     const task = this.tasks.get(taskId)
     if (!task) throw new Error(`Task ${taskId} not found`)
@@ -117,6 +216,9 @@ export class Orchestrator {
     }
 
     task.status = 'running'
+    task.updatedAt = Date.now()
+    this.store.updateTask(task)
+
     const sessionData = await createSubAgentSession(
       this.client,
       taskId,
@@ -127,19 +229,24 @@ export class Orchestrator {
     const sessionId = sessionData.id
     task.sessionId = sessionId
 
+    const now = Date.now()
     const agentState: AgentState = {
       sessionId,
       taskId,
       status: 'creating',
       stream: [],
-      startTime: Date.now(),
+      startTime: now,
+      lastHeartbeat: now,
+      watchdogTimeout: 120000,
+      healthStatus: 'healthy',
     }
     this.agents.set(sessionId, agentState)
+    this.store.insertAgent(agentState)
+    this.healthMonitor.registerSession(sessionId, agentState)
 
     this.callbacks.onStateChange()
     this.addTimeline('main', sessionId, 'dispatch', `Dispatching: ${task.description}`)
 
-    // sub-agent prompt：极简，让子 Agent 自己去读 OpenSpec 文档获取上下文
     const promptText = `You are a code development sub-agent.
 
 ## Task
@@ -155,10 +262,10 @@ ${task.description}
 
     await sendTaskPrompt(this.client, sessionId, promptText)
     agentState.status = 'running'
+    this.store.updateAgent(agentState)
     this.callbacks.onAgentStateChange(sessionId, { status: 'running' })
   }
 
-  /** 子 Agent 空闲（任务完成）时评估结果 */
   private async handleSessionComplete(sessionId: string) {
     try {
       const agent = this.agents.get(sessionId)
@@ -170,12 +277,19 @@ ${task.description}
       const result = await evaluateTaskCompletion(this.client, sessionId)
 
       task.status = 'completed'
+      task.updatedAt = Date.now()
       this.budgetSpent += result.cost
+
+      this.store.updateTask(task)
+      this.agents.delete(sessionId)
+      this.healthMonitor.unregisterSession(sessionId)
+      this.scheduler.updateTaskStatus(agent.taskId, 'completed')
+      this.scheduler.onTaskCompleted(agent.taskId)
+      this.scheduler.onSessionEnded()
 
       this.addTimeline('sub', sessionId, 'complete',
         `Task completed: ${task.description} (cost: $${result.cost.toFixed(4)})`)
 
-      this.agents.delete(sessionId)
       this.callbacks.onStateChange()
     } catch (err) {
       this.addTimeline('system', sessionId, 'eval-error',
@@ -183,7 +297,6 @@ ${task.description}
     }
   }
 
-  /** 子 Agent 出错时检查重试次数，超过上限则标记失败 */
   private async handleSessionError(sessionId: string, _error: unknown) {
     const agent = this.agents.get(sessionId)
     if (!agent) return
@@ -192,32 +305,93 @@ ${task.description}
     if (!task) return
 
     task.retryCount++
+    task.updatedAt = Date.now()
+    this.healthMonitor.unregisterSession(sessionId)
+
     if (task.retryCount >= task.maxRetries) {
       task.status = 'failed'
       task.error = `Max retries (${task.maxRetries}) exceeded`
+      this.store.updateTask(task)
+      this.scheduler.updateTaskStatus(agent.taskId, 'failed')
+      this.scheduler.onSessionEnded()
+      this.agents.delete(sessionId)
+
       this.addTimeline('system', sessionId, 'max-retries',
         `Task failed: ${task.description} - max retries exceeded`)
     } else {
+      this.store.updateTask(task)
+      this.agents.delete(sessionId)
+      this.scheduler.onSessionEnded()
+
       this.addTimeline('system', sessionId, 'retry',
         `Retrying task: ${task.description} (attempt ${task.retryCount}/${task.maxRetries})`)
-      this.agents.delete(sessionId)
       await this.dispatchTask(task.id)
     }
     this.callbacks.onStateChange()
   }
 
-  /** 人工中止任务：中止 ACP 会话并重置任务为 pending */
+  private async handleHungSession(sessionId: string) {
+    const agent = this.agents.get(sessionId)
+    if (!agent) return
+
+    const task = this.tasks.get(agent.taskId)
+    if (!task) return
+
+    const shouldRecover = await this.recovery.recoverHungSession(
+      sessionId, agent.taskId, task.retryCount, task.maxRetries,
+    )
+
+    if (shouldRecover) {
+      task.retryCount++
+      task.updatedAt = Date.now()
+      this.store.updateTask(task)
+      this.agents.delete(sessionId)
+      this.healthMonitor.unregisterSession(sessionId)
+      this.scheduler.onSessionEnded()
+
+      this.addTimeline('system', sessionId, 'hung-recovery',
+        `Session hung, retrying (${task.retryCount}/${task.maxRetries})`)
+      await this.dispatchTask(task.id)
+    } else {
+      task.status = 'failed'
+      task.error = 'Session hung, max retries exceeded'
+      task.updatedAt = Date.now()
+      this.store.updateTask(task)
+      this.agents.delete(sessionId)
+      this.healthMonitor.unregisterSession(sessionId)
+      this.scheduler.onSessionEnded()
+
+      this.addTimeline('system', sessionId, 'hung-failed',
+        `Task failed: ${task.description} - session hung, max retries exceeded`)
+    }
+    this.callbacks.onStateChange()
+  }
+
   async abortTask(taskId: string) {
     const task = this.tasks.get(taskId)
-    if (!task || !task.sessionId) return
-    await abortSession(this.client, task.sessionId)
+    if (!task) return
+
+    if (task.sessionId) {
+      try {
+        await abortSession(this.client, task.sessionId)
+      } catch {
+        // stale session
+      }
+      this.agents.delete(task.sessionId)
+      this.healthMonitor.unregisterSession(task.sessionId)
+    }
+
     task.status = 'pending'
-    this.agents.delete(task.sessionId)
+    task.sessionId = undefined
+    task.updatedAt = Date.now()
+    this.store.updateTask(task)
+
+    this.scheduler.onSessionEnded()
+
     this.addTimeline('user', 'system', 'abort', `Aborted: ${task.description}`)
     this.callbacks.onStateChange()
   }
 
-  /** 添加时间线事件，同时通过回调广播到 WebUI */
   private addTimeline(source: TimelineEntry['source'], sessionId: string, type: string, message: string) {
     const entry: TimelineEntry = {
       id: crypto.randomUUID(),
@@ -228,6 +402,39 @@ ${task.description}
       message,
     }
     this.timeline.push(entry)
+    this.store.insertTimelineEntry(entry)
     this.callbacks.onTimeline(entry)
+  }
+
+  // ── Schedule management ──
+
+  addSchedule(description: string, cronExpr: string, permission: PermissionLevel = 'safe', budget = 0, maxRetries = 10): string {
+    const id = `schedule-${Date.now()}`
+    const schedule: ScheduledTask = {
+      id, description, cronExpr, permission, budget, maxRetries, enabled: true, lastTriggered: 0,
+    }
+    this.store.insertSchedule(schedule)
+    this.scheduler.registerCronJob(schedule)
+    return id
+  }
+
+  getSchedules(): ScheduledTask[] {
+    return this.store.getAllSchedules()
+  }
+
+  updateSchedule(id: string, updates: Partial<ScheduledTask>): void {
+    const schedules = this.store.getAllSchedules()
+    const existing = schedules.find((s) => s.id === id)
+    if (!existing) throw new Error(`Schedule ${id} not found`)
+
+    const updated = { ...existing, ...updates }
+    this.store.updateSchedule(updated)
+    this.scheduler.unregisterCronJob(id)
+    if (updated.enabled) this.scheduler.registerCronJob(updated)
+  }
+
+  deleteSchedule(id: string): void {
+    this.scheduler.unregisterCronJob(id)
+    this.store.deleteSchedule(id)
   }
 }

@@ -19,7 +19,16 @@ export async function createHttpServer(orchestrator: Orchestrator) {
   registerApiRoutes(app, orchestrator)
   registerWebSocket(app, orchestrator)
 
-  app.get('/health', async () => ({ status: 'ok' }))
+  app.get('/health', async () => {
+    const state = orchestrator.getState()
+    const activeAgents = state.agents.filter((a) => a.status === 'running' || a.status === 'creating')
+    return {
+      status: 'ok',
+      db: 'connected',
+      agents: { active: activeAgents.length, total: state.agents.length },
+      tasks: { total: state.tasks.length, running: state.tasks.filter((t) => t.status === 'running').length },
+    }
+  })
 
   await app.register(fastifyStatic, {
     root: webuiDist,

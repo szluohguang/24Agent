@@ -58,7 +58,7 @@ npm run test:e2e   # playwright test (需先 build)
 
 ### 规则 1：中文优先
 - git commit message 使用中文：`<type>: 中文描述`（如 `feat: 添加用户登录功能`）
-- 所有注释/报告/日志使用中文；代码标识符使用英文
+- 输出的所有文档、注释、报告、日志尽可能使用中文，方便我阅读；但代码标识符使用英文
 
 ### 规则 2：双阶段分工
 - **需求规划** → OpenSpec 技能（`/opsx-propose` 创建 proposal/design/tasks）
