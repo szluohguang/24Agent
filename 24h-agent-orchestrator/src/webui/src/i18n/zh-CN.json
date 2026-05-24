@@ -1,0 +1,21 @@
+{
+  "app.title": "24h Agent 编排器",
+  "app.tasks": "任务",
+  "app.active": "活跃",
+  "app.noTasks": "暂无任务。请在底栏添加。",
+  "tab.console": "流式控制台",
+  "tab.timeline": "时间线",
+  "task.dispatch": "分发",
+  "task.abort": "中止",
+  "task.depends": "依赖",
+  "status.connected": "已连接",
+  "status.disconnected": "未连接",
+  "permission.trusted": "信任",
+  "permission.safe": "安全",
+  "permission.strict": "严格",
+  "placeholder.taskDescription": "输入新任务描述...",
+  "button.addTask": "添加任务",
+  "stream.noSessions": "暂无活跃会话。等待任务中...",
+  "timeline.noEvents": "暂无事件。",
+  "language.switch": "语言"
+}
