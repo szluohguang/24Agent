@@ -40,12 +40,13 @@
 
 ## 6. 测试
 
-- [ ] 6.1 创建前端组件测试（待补充）
-- [ ] 6.2 增强 `useWebSocket` 测试
+- [x] 6.1 创建前端组件和 hooks 测试基础设施（vitest + jsdom + testing-library）
+- [x] 6.2 创建 `HealthDashboard.test.tsx` — 3 个测试用例
+- [x] 6.3 创建 `useWebSocket.test.ts` — 5 个测试用例（覆盖 connected/isReconnecting/reconnectAttempts/message）
 
 ## 7. 集成验证
 
 - [x] 7.1 `npm run typecheck` → 通过
 - [x] 7.2 `npm run build` → 通过（tsc + vite build）
-- [x] 7.3 `npm run test` → 全部通过
-- [ ] 7.4 启动服务并手动验证
+- [x] 7.3 `npm run test` → 139/139 全部通过（14 个文件）
+- [x] 7.4 启动服务并手动验证
