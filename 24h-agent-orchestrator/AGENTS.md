@@ -77,8 +77,28 @@ npm run test:e2e   # playwright test (需先 build)
 
 步骤 0: 加载 skill("using-superpowers")，声明进入实施工作流
 步骤 1: 读取 openspec tasks.md / design.md / proposal.md
-步骤 2: 按类型执行工作流
-  ├─ 新需求 → skill("test-driven-development") → Red → Green → Refactor
+步骤 2: 按类型执行工作流。**每个产生代码的 task 必须按以下 micro-cycle 执行：**
+
+```
+┌─ Task 级微循环（每个 task 独立执行）──────────────────┐
+│                                                        │
+│  [代码类 task]                                          │
+│   ├─ 1. 写这个 task 的测试（Red）                       │
+│   ├─ 2. 运行测试，确认 FAIL（验证红）                   │
+│   ├─ 3. 写最小实现代码（Green）                         │
+│   ├─ 4. 运行测试，确认 PASS（验证绿）                   │
+│   └─ 5. 重构（保持绿）                                 │
+│                                                        │
+│  [配置/翻译/data 类 task]                               │
+│   └─ 直接创建，无需 TDD 循环                            │
+│                                                        │
+│  标记 task 为 [x] 前必须满足：                           │
+│  - 代码类: Red→Green 循环完成，FAIL→PASS 输出在手        │
+│  - 配置类: 文件创建完成                                  │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+
+  ├─ 新需求 → skill("test-driven-development") → 按 micro-cycle 逐 task 推进
   ├─ Bug    → skill("systematic-debugging") → 根因调查 → 重现 → 修复
   └─ 模糊   → skill("brainstorming") → 设计方案 → 用户确认
 步骤 3: 验证链（顺序执行，失败不得跳过）→ typecheck → build → test
@@ -111,6 +131,7 @@ npm run test:e2e   # playwright test (需先 build)
 | 案例 | 跳过的步骤 | 后果 | 日期 |
 |---|---|---|---|
 | Phase 3 持久化+调度 | 未加载 `using-superpowers`、未走 TDD 循环（先写实现后补测试）、未做 Code Review | 花大量时间修测试类型错误，代码质量无正式把关 | 2026-05-24 |
+| WebUI 全面升级 | 加载了 TDD skill 但未执行逐 task 的 Red→Green→Refactor 循环；7 个任务组一次性批量提交，未逐个验证；3.3 和测试组仍为 [ ] 但已声称完成 | 前端的测试缺失，部分功能 (cron 预览) 未完成 | 2026-05-24 |
 
 ### 规则 6：代码规范
 - **注释**：关键逻辑需注释说明意图，避免逐行啰嗦。只写"为什么这样写"，不写"在做什么"
