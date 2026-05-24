@@ -69,6 +69,12 @@ npm run test:e2e   # playwright test (需先 build)
 进入 `/opsx-apply` 后，按以下顺序执行：
 
 ```
+┌─ 前置门禁（必须执行，不可跳过）──────────────────────────┐
+│ 使用 Question 工具让用户确认："即将进入实施工作流。我已加载  │
+│ skill('using-superpowers')、skill('test-driven-development')│
+│ (新需求) / skill('systematic-debugging') (Bug)。是否继续?" │
+└────────────────────────────────────────────────────────────┘
+
 步骤 0: 加载 skill("using-superpowers")，声明进入实施工作流
 步骤 1: 读取 openspec tasks.md / design.md / proposal.md
 步骤 2: 按类型执行工作流
@@ -98,7 +104,15 @@ npm run test:e2e   # playwright test (需先 build)
   ## 变更文件清单（新增/修改）
   ```
 
-### 规则 5：代码规范
+### 规则 5：反例库
+
+以下是被记录的实际跳过案例，每次开工前必须重读：
+
+| 案例 | 跳过的步骤 | 后果 | 日期 |
+|---|---|---|---|
+| Phase 3 持久化+调度 | 未加载 `using-superpowers`、未走 TDD 循环（先写实现后补测试）、未做 Code Review | 花大量时间修测试类型错误，代码质量无正式把关 | 2026-05-24 |
+
+### 规则 6：代码规范
 - **注释**：关键逻辑需注释说明意图，避免逐行啰嗦。只写"为什么这样写"，不写"在做什么"
 - **风格**：TypeScript 严格模式，ESNext 目标
 - **结构**：模块化，独立文件，无全局变量污染
