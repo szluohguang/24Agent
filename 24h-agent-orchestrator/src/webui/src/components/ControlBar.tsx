@@ -1,19 +1,20 @@
 import React, { useState } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { useLocale } from '../i18n/useLocale.js'
+import type { PermissionLevel } from '../types.js'
 
 interface ControlBarProps {
   connected: boolean
+  isReconnecting: boolean
+  reconnectAttempts: number
   permissionLevel: string
   onSetPermission: (level: string) => void
   onCreateTask: (description: string) => void
 }
 
 export function ControlBar({
-  connected,
-  permissionLevel,
-  onSetPermission,
-  onCreateTask,
+  connected, isReconnecting, reconnectAttempts,
+  permissionLevel, onSetPermission, onCreateTask,
 }: ControlBarProps) {
   const [taskInput, setTaskInput] = useState('')
   const { locale, setLocale } = useLocale()
@@ -27,21 +28,27 @@ export function ControlBar({
   }
 
   return (
-    <div
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '8px 16px', background: '#161b22',
-        borderTop: '1px solid #30363d', fontSize: 13,
-      }}
-    >
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '8px 16px', background: '#161b22',
+      borderTop: '1px solid #30363d', fontSize: 13,
+    }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <span style={{
-          width: 8, height: 8, borderRadius: '50%',
-          background: connected ? '#3fb950' : '#f85149', display: 'inline-block',
+          width: 8, height: 8, borderRadius: '50%', display: 'inline-block',
+          background: isReconnecting ? '#d29922' : connected ? '#3fb950' : '#f85149',
         }} />
-        <span style={{ color: '#8b949e' }}>{connected
-          ? <FormattedMessage id="status.connected" />
-          : <FormattedMessage id="status.disconnected" />}</span>
+        {isReconnecting ? (
+          <span style={{ color: '#d29922' }}>
+            Reconnecting... ({reconnectAttempts})
+          </span>
+        ) : (
+          <span style={{ color: connected ? '#3fb950' : '#f85149' }}>
+            {connected
+              ? <FormattedMessage id="status.connected" />
+              : <FormattedMessage id="status.disconnected" />}
+          </span>
+        )}
       </div>
 
       <select

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { IntlProvider } from 'react-intl'
 import zhCN from './zh-CN.json'
+import enUS from './en-US.json'
 
 type Locale = 'zh-CN' | 'en'
 
@@ -18,7 +19,7 @@ const STORAGE_KEY = '24h-agent-locale'
 
 const messages: Record<Locale, Record<string, string>> = {
   'zh-CN': zhCN,
-  en: {},
+  en: enUS,
 }
 
 function detectLocale(): Locale {

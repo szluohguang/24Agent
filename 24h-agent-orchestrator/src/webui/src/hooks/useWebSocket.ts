@@ -1,24 +1,21 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 
-/** WebSocket 消息类型定义，与服务端保持一致的协议 */
 export type WsMessage =
   | { type: 'connected'; clientId: string; state: unknown }
   | { type: 'state-update' }
   | { type: 'timeline'; entry: unknown }
   | { type: 'stream-delta'; sessionId: string; delta: string }
   | { type: 'agent-state'; sessionId: string; state: unknown }
+  | { type: 'health-report'; data: unknown }
   | { type: 'error'; message: string }
 
-/**
- * WebSocket 连接钩子：
- * - 自动连接和 3 秒自动重连
- * - 每次收到消息更新 lastMessage（触发消费方 useEffect）
- * - 提供 send 方法用于发送 JSON 消息
- */
 export function useWebSocket(url: string) {
   const wsRef = useRef<WebSocket | null>(null)
   const [connected, setConnected] = useState(false)
   const [lastMessage, setLastMessage] = useState<WsMessage | null>(null)
+  const [isReconnecting, setIsReconnecting] = useState(false)
+  const [reconnectAttempts, setReconnectAttempts] = useState(0)
+  const [lastConnectedAt, setLastConnectedAt] = useState<number | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
   const connect = useCallback(() => {
@@ -26,10 +23,15 @@ export function useWebSocket(url: string) {
 
     ws.onopen = () => {
       setConnected(true)
+      setIsReconnecting(false)
+      setReconnectAttempts(0)
+      setLastConnectedAt(Date.now())
     }
 
     ws.onclose = () => {
       setConnected(false)
+      setIsReconnecting(true)
+      setReconnectAttempts((prev) => prev + 1)
       reconnectTimeoutRef.current = setTimeout(connect, 3000)
     }
 
@@ -38,7 +40,7 @@ export function useWebSocket(url: string) {
         const msg = JSON.parse(event.data) as WsMessage
         setLastMessage(msg)
       } catch {
-        // 非 JSON 消息（如心跳）直接忽略
+        // non-JSON messages (e.g. heartbeats) ignored
       }
     }
 
@@ -63,5 +65,5 @@ export function useWebSocket(url: string) {
     }
   }, [])
 
-  return { connected, lastMessage, send }
+  return { connected, lastMessage, send, isReconnecting, reconnectAttempts, lastConnectedAt }
 }

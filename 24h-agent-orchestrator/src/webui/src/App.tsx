@@ -1,55 +1,66 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { FormattedMessage, useIntl } from 'react-intl'
+import { FormattedMessage } from 'react-intl'
 import { useWebSocket } from './hooks/useWebSocket.js'
 import { StreamConsole } from './components/StreamConsole.js'
 import { Timeline } from './components/Timeline.js'
 import { ControlBar } from './components/ControlBar.js'
-
-interface TaskNode {
-  id: string
-  description: string
-  status: string
-  sessionId?: string
-  dependsOn: string[]
-}
-
-interface TimelineEntryData {
-  id: string
-  time: number
-  source: string
-  sessionId?: string
-  type: string
-  message: string
-}
+import { TreeView } from './components/TreeView.js'
+import { HealthDashboard } from './components/HealthDashboard.js'
+import { ScheduleManager } from './components/ScheduleManager.js'
+import type { TaskNode, TimelineEntryData } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
+type Tab = 'tasks' | 'console' | 'timeline' | 'health' | 'schedule'
+
 export function App() {
-  const { connected, lastMessage, send } = useWebSocket(WS_URL)
+  const { connected, lastMessage, send, isReconnecting, reconnectAttempts } = useWebSocket(WS_URL)
   const [tasks, setTasks] = useState<TaskNode[]>([])
   const [sessions, setSessions] = useState<Record<string, { taskId: string; stream: string[] }>>({})
   const [timelineEntries, setTimelineEntries] = useState<TimelineEntryData[]>([])
   const [permissionLevel, setPermissionLevel] = useState('safe')
-  const [activeTab, setActiveTab] = useState<'console' | 'timeline'>('console')
+  const [activeTab, setActiveTab] = useState<Tab>('tasks')
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>()
-  const intl = useIntl()
+  const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
+  const [healthStale, setHealthStale] = useState(false)
+
+  // Health polling
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/health')
+        if (res.ok) {
+          setHealthStale(false)
+        }
+      } catch {
+        setHealthStale(true)
+      }
+    }
+    const id = setInterval(poll, 5000)
+    poll()
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (!lastMessage) return
 
     switch (lastMessage.type) {
       case 'connected': {
-        const state = (lastMessage as { type: 'connected'; clientId: string; state: unknown }).state as
-          | { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[] }> }
+        const msg = lastMessage as { type: 'connected'; clientId: string; state: unknown }
+        const state = msg.state as
+          | { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
           | undefined
         if (state?.tasks) setTasks(state.tasks)
         if (state?.timeline) setTimelineEntries(state.timeline)
         if (state?.agents) {
           const sessionsMap: Record<string, { taskId: string; stream: string[] }> = {}
+          const agentList: typeof agents = []
           for (const a of state.agents) {
             sessionsMap[a.sessionId] = { taskId: a.taskId, stream: a.stream || [] }
+            agentList.push({ sessionId: a.sessionId, taskId: a.taskId, healthStatus: a.healthStatus || 'healthy', lastHeartbeat: a.lastHeartbeat || Date.now(), startTime: a.startTime })
           }
           setSessions(sessionsMap)
+          setAgents(agentList)
         }
         break
       }
@@ -69,10 +80,21 @@ export function App() {
       }
       case 'agent-state': {
         const msg = lastMessage as { type: 'agent-state'; sessionId: string; state: unknown }
+        const st = msg.state as { status?: string; healthStatus?: string; lastHeartbeat?: number } | undefined
+        if (st?.healthStatus) {
+          setAgents((prev) => prev.map((a) => a.sessionId === msg.sessionId ? { ...a, healthStatus: st.healthStatus!, lastHeartbeat: st.lastHeartbeat ?? a.lastHeartbeat } : a))
+        }
         setSessions((prev) => {
           if (!prev[msg.sessionId]) return prev
           return { ...prev, [msg.sessionId]: { ...prev[msg.sessionId] } }
         })
+        break
+      }
+      case 'health-report': {
+        const msg = lastMessage as { type: 'health-report'; data: unknown }
+        const data = msg.data as { agents?: typeof agents } | undefined
+        if (data?.agents) setAgents(data.agents)
+        setHealthStale(false)
         break
       }
     }
@@ -88,14 +110,20 @@ export function App() {
     send({ type: 'create-task', description, dependsOn: [] })
   }, [send])
 
+  const tabs: { id: Tab; label: React.ReactNode }[] = [
+    { id: 'tasks', label: <>📋 <FormattedMessage id="app.tasks" /></> },
+    { id: 'console', label: <>💻 <FormattedMessage id="tab.console" /></> },
+    { id: 'timeline', label: <>📜 <FormattedMessage id="tab.timeline" /></> },
+    { id: 'health', label: <>❤️ <FormattedMessage id="tab.health" /></> },
+    { id: 'schedule', label: <>📅 <FormattedMessage id="tab.schedule" /></> },
+  ]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 16px', background: '#161b22', borderBottom: '1px solid #30363d',
-        }}
-      >
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 16px', background: '#161b22', borderBottom: '1px solid #30363d',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18, fontWeight: 'bold' }}>⚡</span>
           <span style={{ fontSize: 15, fontWeight: 600 }}><FormattedMessage id="app.title" /></span>
@@ -107,89 +135,64 @@ export function App() {
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: 320, borderRight: '1px solid #30363d', overflowY: 'auto', background: '#0d1117' }}>
-          <div style={{ padding: '8px 12px', fontWeight: 600, fontSize: 12, color: '#8b949e', textTransform: 'uppercase' }}>
-            <FormattedMessage id="app.tasks" />
-          </div>
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              onClick={() => { if (task.sessionId) setActiveSessionId(task.sessionId) }}
+        {/* Sidebar with tabs */}
+        <div style={{ width: 52, borderRight: '1px solid #30363d', background: '#161b22', display: 'flex', flexDirection: 'column', padding: '4px 0' }}>
+          {tabs.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 12px', margin: '2px 4px', borderRadius: 4, cursor: 'pointer',
-                background: activeSessionId === task.sessionId ? '#1f2937' : 'transparent',
+                padding: '10px 0', background: 'transparent', cursor: 'pointer', fontSize: 18,
+                border: 'none', borderLeft: activeTab === tab.id ? '3px solid #58a6ff' : '3px solid transparent',
+                color: activeTab === tab.id ? '#c9d1d9' : '#8b949e',
               }}
+              title={typeof tab.label === 'string' ? tab.label : undefined}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{
-                  color: task.status === 'completed' ? '#3fb950'
-                    : task.status === 'running' ? '#58a6ff'
-                    : task.status === 'failed' ? '#f85149' : '#8b949e',
-                  fontSize: 14,
-                }}>
-                  {task.status === 'completed' ? '✓' : task.status === 'running' ? '●' : task.status === 'failed' ? '✗' : '○'}
-                </span>
-                <span style={{ fontSize: 13, color: '#c9d1d9' }}>{task.description}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                {task.status === 'pending' && (
-                  <button onClick={(e) => { e.stopPropagation(); handleDispatch(task.id) }}
-                    style={{ padding: '2px 8px', background: '#238636', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>
-                    <FormattedMessage id="task.dispatch" />
-                  </button>
-                )}
-                {task.status === 'running' && (
-                  <button onClick={(e) => { e.stopPropagation(); handleAbort(task.id) }}
-                    style={{ padding: '2px 8px', background: '#da3633', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>
-                    <FormattedMessage id="task.abort" />
-                  </button>
-                )}
-              </div>
-              {task.dependsOn.length > 0 && (
-                <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>
-                  <FormattedMessage id="task.depends" />: {task.dependsOn.join(', ')}
-                </div>
-              )}
-            </div>
+              {tab.label}
+            </button>
           ))}
-          {tasks.length === 0 && (
-            <div style={{ padding: 16, color: '#8b949e', fontSize: 12 }}>
-              <FormattedMessage id="app.noTasks" />
-            </div>
-          )}
         </div>
 
+        {/* Content area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d1117' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
-            <button onClick={() => setActiveTab('console')}
-              style={{
-                padding: '8px 16px', background: 'transparent', cursor: 'pointer', fontSize: 13,
-                color: activeTab === 'console' ? '#c9d1d9' : '#8b949e',
-                border: 'none', borderBottom: activeTab === 'console' ? '2px solid #58a6ff' : '2px solid transparent',
-              }}>
-              <FormattedMessage id="tab.console" />
-            </button>
-            <button onClick={() => setActiveTab('timeline')}
-              style={{
-                padding: '8px 16px', background: 'transparent', cursor: 'pointer', fontSize: 13,
-                color: activeTab === 'timeline' ? '#c9d1d9' : '#8b949e',
-                border: 'none', borderBottom: activeTab === 'timeline' ? '2px solid #58a6ff' : '2px solid transparent',
-              }}>
-              <FormattedMessage id="tab.timeline" />
-            </button>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            {activeTab === 'console' ? (
-              <StreamConsole sessions={sessions} activeSessionId={activeSessionId} />
-            ) : (
-              <Timeline entries={timelineEntries} />
-            )}
-          </div>
+          {activeTab === 'tasks' && (
+            <TreeView tasks={tasks} onDispatch={handleDispatch} onAbort={handleAbort} />
+          )}
+          {activeTab === 'console' && (
+            <>
+              <div style={{ display: 'flex', borderBottom: '1px solid #30363d', paddingLeft: 12 }}>
+                <span style={{ padding: '8px 0', fontSize: 13, color: '#c9d1d9', fontWeight: 600 }}>
+                  <FormattedMessage id="tab.console" />
+                </span>
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <StreamConsole sessions={sessions} activeSessionId={activeSessionId} />
+              </div>
+            </>
+          )}
+          {activeTab === 'timeline' && (
+            <>
+              <div style={{ display: 'flex', borderBottom: '1px solid #30363d', paddingLeft: 12 }}>
+                <span style={{ padding: '8px 0', fontSize: 13, color: '#c9d1d9', fontWeight: 600 }}>
+                  <FormattedMessage id="tab.timeline" />
+                </span>
+              </div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <Timeline entries={timelineEntries} />
+              </div>
+            </>
+          )}
+          {activeTab === 'health' && (
+            <HealthDashboard agents={agents} stale={healthStale} />
+          )}
+          {activeTab === 'schedule' && (
+            <ScheduleManager />
+          )}
         </div>
       </div>
 
       <ControlBar
         connected={connected}
+        isReconnecting={isReconnecting}
+        reconnectAttempts={reconnectAttempts}
         permissionLevel={permissionLevel}
         onSetPermission={handleSetPermission}
         onCreateTask={handleCreateTask}
