@@ -108,6 +108,7 @@
 - **StreamConsole**：实时展示会话的 text delta
 - **Timeline**：事件时间线，按 source 着色（main / sub / system / user）
 - **ControlBar**：权限选择、预算设置、任务创建
+- **语言**：多语言支持，默认用中文
 
 ---
 
@@ -202,4 +203,4 @@ npm run test:watch # vitest
 - **代码风格**：使用 TypeScript 严格模式，严格遵循 TypeScript 官方风格指南。
 - **代码结构**：模块化设计，每个功能模块应独立文件，避免全局变量污染。
 - **测试**：单元测试、集成测试、端到端测试，优先级高于文档。
-- **任务执行要求**: 需求拆分和任务拆解用openspec技能，代码生成和bug修改、codereivew用superpowers技能。每次任务完成必须填写任务执行报告以及任务执行日志等相关文件，并需要提交代码到git仓库，
+- **任务执行要求**: 需求拆分和任务拆解用openspec技能，代码生成和bug修改、codereivew用superpowers技能。每次任务完成必须填写任务执行报告以及任务执行日志等相关文件，并需要提交代码到git仓库。任务报告文件格式要求 yyyy-mm-dd-<任务描述>.md,任务日志文件需要有完整的变更记录登记。任务登记内容格式：yyyyyy-mm-dd-<任务描述>：任务概述、任务报告文件的相对路径及文件名。

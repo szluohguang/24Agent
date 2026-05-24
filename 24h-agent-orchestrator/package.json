@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test --config src/webui/e2e/playwright.config.ts"
   },
   "dependencies": {
     "@fastify/websocket": "^11.0.0",
@@ -23,11 +25,13 @@
   },
   "devDependencies": {
     "@fastify/static": "^9.1.3",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.4.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vite": "^6.0.0",
