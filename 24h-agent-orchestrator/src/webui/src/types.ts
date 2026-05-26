@@ -1,4 +1,19 @@
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'scheduled' | 'queued' | 'retrying'
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'scheduled' | 'queued' | 'retrying' | 'awaiting_review' | 'rejected'
+
+export interface TaskResult {
+  summary: string
+  artifacts: string[]
+  cost: number
+  tokens?: { input: number; output: number }
+}
+
+export interface ReviewRecord {
+  taskId: string
+  action: 'approved' | 'rejected'
+  feedback?: string
+  reviewer: 'user' | 'system'
+  reviewedAt: number
+}
 
 export interface TaskNode {
   id: string
@@ -8,6 +23,8 @@ export interface TaskNode {
   dependsOn: string[]
   retryCount?: number
   maxRetries?: number
+  result?: TaskResult
+  reviewHistory?: ReviewRecord[]
 }
 
 export interface TimelineEntryData {

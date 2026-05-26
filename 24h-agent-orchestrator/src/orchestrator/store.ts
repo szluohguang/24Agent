@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { TaskState, AgentState, TimelineEntry, ScheduledTask, PermissionLevel } from './types.js'
+import type { TaskState, AgentState, TimelineEntry, ScheduledTask, PermissionLevel, ReviewRecord } from './types.js'
 
 export class Store {
   private db: Database.Database
@@ -40,6 +40,14 @@ export class Store {
       budget: task.budget,
       updatedAt: Date.now(),
     })
+  }
+
+  deleteTask(id: string): void {
+    this.db.prepare('DELETE FROM tasks WHERE id = ?').run(id)
+  }
+
+  deleteAgent(sessionId: string): void {
+    this.db.prepare('DELETE FROM agents WHERE sessionId = ?').run(sessionId)
   }
 
   getAllTasks(): TaskState[] {
@@ -148,6 +156,38 @@ export class Store {
       sessionId: (row.sessionId as string) || undefined,
       type: row.type as string,
       message: row.message as string,
+    }
+  }
+
+  // ── Reviews ──
+
+  insertReview(record: ReviewRecord): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO reviews (id, taskId, action, feedback, reviewer, reviewedAt)
+      VALUES (@id, @taskId, @action, @feedback, @reviewer, @reviewedAt)
+    `)
+    stmt.run({
+      id: `${record.taskId}-${record.reviewedAt}-${record.action}`,
+      taskId: record.taskId,
+      action: record.action,
+      feedback: record.feedback ?? null,
+      reviewer: record.reviewer,
+      reviewedAt: record.reviewedAt,
+    })
+  }
+
+  getReviewsByTaskId(taskId: string): ReviewRecord[] {
+    const rows = this.db.prepare('SELECT * FROM reviews WHERE taskId = ? ORDER BY reviewedAt ASC').all(taskId) as Record<string, unknown>[]
+    return rows.map((r) => this.rowToReview(r))
+  }
+
+  private rowToReview(row: Record<string, unknown>): ReviewRecord {
+    return {
+      taskId: row.taskId as string,
+      action: row.action as ReviewRecord['action'],
+      feedback: (row.feedback as string) || undefined,
+      reviewer: row.reviewer as ReviewRecord['reviewer'],
+      reviewedAt: row.reviewedAt as number,
     }
   }
 

@@ -74,6 +74,15 @@ function createTables(database: Database.Database) {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      taskId TEXT NOT NULL,
+      action TEXT NOT NULL,
+      feedback TEXT,
+      reviewer TEXT NOT NULL DEFAULT 'user',
+      reviewedAt INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS schedules (
       id TEXT PRIMARY KEY,
       description TEXT NOT NULL,

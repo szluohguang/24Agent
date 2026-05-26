@@ -40,7 +40,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale
-    document.title = locale === 'zh-CN' ? '24h Agent 编排器' : '24h Agent Orchestrator'
+    document.title = messages[locale]['app.title']
   }, [locale])
 
   const ctx = useMemo(() => ({ locale, setLocale }), [locale, setLocale])

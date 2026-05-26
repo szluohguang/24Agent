@@ -40,7 +40,7 @@ export function ControlBar({
         }} />
         {isReconnecting ? (
           <span style={{ color: '#d29922' }}>
-            Reconnecting... ({reconnectAttempts})
+            <FormattedMessage id="controlbar.reconnecting" values={{ count: reconnectAttempts }} />
           </span>
         ) : (
           <span style={{ color: connected ? '#3fb950' : '#f85149' }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { SystemOverview } from './SystemOverview'
 
 interface AgentHealthRow {
@@ -25,20 +25,22 @@ const STATUS_ICONS: Record<string, string> = {
   dead: '✗',
 }
 
-function relativeTime(ts: number): string {
+function RelativeTime({ ts }: { ts: number }) {
+  const intl = useIntl()
   const sec = Math.floor((Date.now() - ts) / 1000)
-  if (sec < 5) return 'just now'
-  if (sec < 60) return `${sec}s ago`
+  if (sec < 5) return <>{intl.formatMessage({ id: 'health.justNow' })}</>
+  if (sec < 60) return <>{intl.formatMessage({ id: 'health.secAgo' }, { sec })}</>
   const min = Math.floor(sec / 60)
-  return `${min}m ago`
+  return <>{intl.formatMessage({ id: 'health.minAgo' }, { min })}</>
 }
 
-function duration(ts: number): string {
+function Duration({ ts }: { ts: number }) {
+  const intl = useIntl()
   const sec = Math.floor((Date.now() - ts) / 1000)
   const min = Math.floor(sec / 60)
   const hrs = Math.floor(min / 60)
-  if (hrs > 0) return `${hrs}h ${min % 60}m`
-  return `${min}m ${sec % 60}s`
+  if (hrs > 0) return <>{intl.formatMessage({ id: 'health.hrMin' }, { hrs, min: min % 60 })}</>
+  return <>{intl.formatMessage({ id: 'health.minSec' }, { min, sec: sec % 60 })}</>
 }
 
 export function HealthDashboard({ agents, stale }: { agents: AgentHealthRow[]; stale: boolean }) {
@@ -65,7 +67,7 @@ export function HealthDashboard({ agents, stale }: { agents: AgentHealthRow[]; s
           </thead>
           <tbody>
             {agents.length === 0 ? (
-              <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#8b949e' }}>No active agents</td></tr>
+              <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#8b949e' }}><FormattedMessage id="health.noAgents" /></td></tr>
             ) : agents.map((agent) => {
               const color = HEALTH_COLORS[agent.healthStatus] || '#8b949e'
               return (
@@ -76,8 +78,8 @@ export function HealthDashboard({ agents, stale }: { agents: AgentHealthRow[]; s
                   <td style={{ padding: '8px 12px' }}>
                     <span style={{ color }}>{STATUS_ICONS[agent.healthStatus] || '○'} {agent.healthStatus}</span>
                   </td>
-                  <td style={{ padding: '8px 12px', color: '#8b949e' }}>{relativeTime(agent.lastHeartbeat)}</td>
-                  <td style={{ padding: '8px 12px', color: '#8b949e' }}>{duration(agent.startTime)}</td>
+                  <td style={{ padding: '8px 12px', color: '#8b949e' }}><RelativeTime ts={agent.lastHeartbeat} /></td>
+                  <td style={{ padding: '8px 12px', color: '#8b949e' }}><Duration ts={agent.startTime} /></td>
                 </tr>
               )
             })}

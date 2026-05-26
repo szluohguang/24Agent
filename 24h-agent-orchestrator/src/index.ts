@@ -13,8 +13,9 @@ async function main() {
   const { client, server: ocServer } = await createOpencodeServer()
   console.log(`[orchestrator] opencode ACP server: ${ocServer.url}`)
 
-  const callbacks = createBroadcastCallbacks()
-  const orchestrator = new Orchestrator(client, callbacks, database)
+  let orchestrator!: Orchestrator
+  const callbacks = createBroadcastCallbacks(() => orchestrator.getState())
+  orchestrator = new Orchestrator(client, callbacks, database)
   await orchestrator.start()
 
   const httpServer = await createHttpServer(orchestrator)

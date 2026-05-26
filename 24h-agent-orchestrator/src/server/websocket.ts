@@ -24,12 +24,15 @@ export function registerWebSocket(
     const clientId = crypto.randomUUID()
     clients.set(clientId, { ws: socket, id: clientId })
 
-    socket.on('message', (raw: Buffer | string) => {
+    socket.on('message', async (raw: Buffer | string) => {
       try {
         const msg = JSON.parse(raw.toString())
-        handleWsMessage(socket, orchestrator, msg)
-      } catch {
-        socket.send(JSON.stringify({ type: 'error', message: 'invalid JSON' }))
+        await handleWsMessage(socket, orchestrator, msg)
+      } catch (err) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          message: err instanceof Error ? err.message : 'invalid message',
+        }))
       }
     })
 
@@ -47,7 +50,7 @@ export function registerWebSocket(
 }
 
 /** 根据消息类型分发到 Orchestrator 的对应方法 */
-function handleWsMessage(
+async function handleWsMessage(
   socket: WebSocket,
   orchestrator: Orchestrator,
   msg: { type: string; [key: string]: unknown },
@@ -57,13 +60,17 @@ function handleWsMessage(
       orchestrator.addTask(msg.description as string, (msg.dependsOn as string[]) || [])
       break
     case 'dispatch-task':
-      orchestrator.dispatchTask(msg.taskId as string)
+      await orchestrator.dispatchTask(msg.taskId as string)
       break
     case 'abort-task':
-      orchestrator.abortTask(msg.taskId as string)
+      await orchestrator.abortTask(msg.taskId as string)
       break
     case 'set-permission':
       orchestrator.setPermissionLevel(msg.level as 'trusted' | 'safe' | 'strict')
+      break
+    case 'continue-prompt':
+      await orchestrator.continuePrompt(msg.sessionId as string, msg.prompt as string)
+      socket.send(JSON.stringify({ type: 'follow-up-prompt', sessionId: msg.sessionId, prompt: msg.prompt }))
       break
     case 'schedule-task':
       orchestrator.addSchedule(
@@ -75,6 +82,10 @@ function handleWsMessage(
       break
     case 'list-schedules':
       socket.send(JSON.stringify({ type: 'schedules', schedules: orchestrator.getSchedules() }))
+      break
+    case 'delete-task':
+      orchestrator.deleteTask(msg.taskId as string)
+      socket.send(JSON.stringify({ type: 'task-deleted', taskId: msg.taskId }))
       break
     case 'delete-schedule':
       orchestrator.deleteSchedule(msg.id as string)
@@ -96,10 +107,14 @@ export function broadcastToClients(data: unknown) {
 }
 
 /** 创建标准回调集合，将 Orchestrator 事件自动广播到所有 WebSocket 客户端 */
-export function createBroadcastCallbacks() {
+export function createBroadcastCallbacks(getState?: () => unknown) {
   return {
     onStateChange: () => {
-      broadcastToClients({ type: 'state-update' })
+      if (getState) {
+        broadcastToClients({ type: 'state-update', state: getState() })
+      } else {
+        broadcastToClients({ type: 'state-update' })
+      }
     },
     onTimeline: (entry: TimelineEntry) => {
       broadcastToClients({ type: 'timeline', entry })

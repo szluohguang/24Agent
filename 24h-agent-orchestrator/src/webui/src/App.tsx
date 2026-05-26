@@ -1,28 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { useWebSocket } from './hooks/useWebSocket.js'
+import { useLocale } from './i18n/useLocale.js'
 import { StreamConsole } from './components/StreamConsole.js'
-import { Timeline } from './components/Timeline.js'
-import { ControlBar } from './components/ControlBar.js'
 import { TreeView } from './components/TreeView.js'
 import { HealthDashboard } from './components/HealthDashboard.js'
 import { ScheduleManager } from './components/ScheduleManager.js'
+import { ReviewPanel } from './components/ReviewPanel.js'
 import type { TaskNode, TimelineEntryData } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
-type Tab = 'tasks' | 'console' | 'timeline' | 'health' | 'schedule'
-
 export function App() {
   const { connected, lastMessage, send, isReconnecting, reconnectAttempts } = useWebSocket(WS_URL)
+  const { locale, setLocale } = useLocale()
+  const intl = useIntl()
   const [tasks, setTasks] = useState<TaskNode[]>([])
   const [sessions, setSessions] = useState<Record<string, { taskId: string; stream: string[] }>>({})
   const [timelineEntries, setTimelineEntries] = useState<TimelineEntryData[]>([])
   const [permissionLevel, setPermissionLevel] = useState('safe')
-  const [activeTab, setActiveTab] = useState<Tab>('tasks')
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>()
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>()
   const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
   const [healthStale, setHealthStale] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [taskInput, setTaskInput] = useState('')
+  const [followUpInput, setFollowUpInput] = useState('')
 
   // Health polling
   useEffect(() => {
@@ -41,6 +44,40 @@ export function App() {
     return () => clearInterval(id)
   }, [])
 
+  // Sync selectedTaskId -> activeSessionId
+  useEffect(() => {
+    if (!selectedTaskId) {
+      setActiveSessionId(undefined)
+      return
+    }
+    const task = tasks.find((t) => t.id === selectedTaskId)
+    if (task?.sessionId) {
+      setActiveSessionId(task.sessionId)
+    } else {
+      setActiveSessionId(undefined)
+    }
+  }, [selectedTaskId, tasks])
+
+  const applyState = useCallback((state: { tasks?: TaskNode[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }>; timeline?: TimelineEntryData[] }) => {
+    if (state?.tasks) setTasks(state.tasks)
+    if (state?.timeline) setTimelineEntries(state.timeline)
+    if (state?.agents) {
+      setSessions((prev) => {
+        const merged = { ...prev }
+        for (const a of state.agents) {
+          merged[a.sessionId] = { taskId: a.taskId, stream: a.stream || [] }
+        }
+        return merged
+      })
+      setAgents(state.agents.map((a) => ({
+        sessionId: a.sessionId, taskId: a.taskId,
+        healthStatus: a.healthStatus || 'healthy',
+        lastHeartbeat: a.lastHeartbeat || Date.now(),
+        startTime: a.startTime,
+      })))
+    }
+  }, [])
+
   useEffect(() => {
     if (!lastMessage) return
 
@@ -50,17 +87,14 @@ export function App() {
         const state = msg.state as
           | { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
           | undefined
-        if (state?.tasks) setTasks(state.tasks)
-        if (state?.timeline) setTimelineEntries(state.timeline)
-        if (state?.agents) {
-          const sessionsMap: Record<string, { taskId: string; stream: string[] }> = {}
-          const agentList: typeof agents = []
-          for (const a of state.agents) {
-            sessionsMap[a.sessionId] = { taskId: a.taskId, stream: a.stream || [] }
-            agentList.push({ sessionId: a.sessionId, taskId: a.taskId, healthStatus: a.healthStatus || 'healthy', lastHeartbeat: a.lastHeartbeat || Date.now(), startTime: a.startTime })
-          }
-          setSessions(sessionsMap)
-          setAgents(agentList)
+        applyState(state)
+        break
+      }
+      case 'state-update': {
+        const msg = lastMessage as { type: 'state-update'; state: unknown }
+        if (msg.state) {
+          const state = msg.state as { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
+          applyState(state)
         }
         break
       }
@@ -73,7 +107,9 @@ export function App() {
         const msg = lastMessage as { type: 'stream-delta'; sessionId: string; delta: string }
         setSessions((prev) => {
           const existing = prev[msg.sessionId]
-          if (!existing) return prev
+          if (!existing) {
+            return { ...prev, [msg.sessionId]: { taskId: '', stream: [msg.delta] } }
+          }
           return { ...prev, [msg.sessionId]: { ...existing, stream: [...existing.stream, msg.delta] } }
         })
         break
@@ -98,10 +134,11 @@ export function App() {
         break
       }
     }
-  }, [lastMessage])
+  }, [lastMessage, applyState])
 
   const handleDispatch = useCallback((taskId: string) => send({ type: 'dispatch-task', taskId }), [send])
   const handleAbort = useCallback((taskId: string) => send({ type: 'abort-task', taskId }), [send])
+  const handleDelete = useCallback((taskId: string) => send({ type: 'delete-task', taskId }), [send])
   const handleSetPermission = useCallback((level: string) => {
     setPermissionLevel(level)
     send({ type: 'set-permission', level })
@@ -110,93 +147,219 @@ export function App() {
     send({ type: 'create-task', description, dependsOn: [] })
   }, [send])
 
-  const tabs: { id: Tab; label: React.ReactNode }[] = [
-    { id: 'tasks', label: <>📋 <FormattedMessage id="app.tasks" /></> },
-    { id: 'console', label: <>💻 <FormattedMessage id="tab.console" /></> },
-    { id: 'timeline', label: <>📜 <FormattedMessage id="tab.timeline" /></> },
-    { id: 'health', label: <>❤️ <FormattedMessage id="tab.health" /></> },
-    { id: 'schedule', label: <>📅 <FormattedMessage id="tab.schedule" /></> },
-  ]
+  const handleApprove = useCallback((taskId: string, feedback?: string) => {
+    send({ type: 'approve-task', taskId, feedback })
+  }, [send])
+
+  const handleReject = useCallback((taskId: string, feedback: string) => {
+    send({ type: 'reject-task', taskId, feedback })
+  }, [send])
+
+  const handleSubmitTask = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!taskInput.trim()) return
+    handleCreateTask(taskInput.trim())
+    setTaskInput('')
+  }
+
+  const handleSelectTask = useCallback((taskId: string) => {
+    setSelectedTaskId((prev) => prev === taskId ? undefined : taskId)
+  }, [])
+
+  const handleFollowUpSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!followUpInput.trim() || !activeSessionId) return
+    send({ type: 'continue-prompt', sessionId: activeSessionId, prompt: followUpInput.trim() })
+    setFollowUpInput('')
+  }
+
+  const selectedTask = tasks.find((t) => t.id === selectedTaskId)
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1, padding: '6px 10px', background: '#0d1117', color: '#c9d1d9',
+    border: '1px solid #30363d', borderRadius: 4, fontSize: 13,
+  }
+
+  const btnStyle: React.CSSProperties = {
+    padding: '6px 16px', background: '#238636', color: '#fff',
+    border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap',
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
+      {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 16px', background: '#161b22', borderBottom: '1px solid #30363d',
+        padding: '8px 16px', background: '#161b22', borderBottom: '1px solid #30363d',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18, fontWeight: 'bold' }}>⚡</span>
           <span style={{ fontSize: 15, fontWeight: 600 }}><FormattedMessage id="app.title" /></span>
         </div>
-        <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#8b949e' }}>
-          <span><FormattedMessage id="app.tasks" />: {tasks.length}</span>
-          <span><FormattedMessage id="app.active" />: {Object.keys(sessions).length}</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
+          <button
+            onClick={() => setLocale(locale === 'zh-CN' ? 'en' : 'zh-CN')}
+            style={{
+              padding: '4px 10px', background: '#21262d', color: '#c9d1d9',
+              border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {locale === 'zh-CN' ? 'English' : '中文'}
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: isReconnecting ? '#d29922' : connected ? '#3fb950' : '#f85149' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'inline-block', background: 'currentColor' }} />
+            {isReconnecting ? (
+              <FormattedMessage id="status.reconnecting" values={{ count: reconnectAttempts }} />
+            ) : connected ? (
+              <FormattedMessage id="status.connected" />
+            ) : (
+              <FormattedMessage id="status.disconnected" />
+            )}
+          </div>
+
+          <select
+            value={permissionLevel}
+            onChange={(e) => handleSetPermission(e.target.value)}
+            style={{
+              padding: '4px 8px', background: '#0d1117', color: '#c9d1d9',
+              border: '1px solid #30363d', borderRadius: 4, fontSize: 12,
+            }}
+          >
+            <option value="trusted"><FormattedMessage id="permission.trusted" /></option>
+            <option value="safe"><FormattedMessage id="permission.safe" /></option>
+            <option value="strict"><FormattedMessage id="permission.strict" /></option>
+          </select>
+
+          <button
+            onClick={() => setShowSettings(true)}
+            title={intl.formatMessage({ id: 'app.settings' })}
+            style={{
+              padding: '4px 8px', background: '#21262d', color: '#c9d1d9',
+              border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 14,
+            }}
+          >
+            ⚙️
+          </button>
         </div>
       </div>
 
+      {/* Settings modal */}
+      {showSettings && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setShowSettings(false)}>
+          <div style={{
+            background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
+            width: '80%', maxWidth: 700, maxHeight: '80vh', overflow: 'auto',
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 16px', borderBottom: '1px solid #30363d',
+            }}>
+              <h3 style={{ margin: 0, fontSize: 15 }}><FormattedMessage id="app.settings" /></h3>
+              <button onClick={() => setShowSettings(false)} style={{
+                background: 'transparent', border: 'none', color: '#8b949e',
+                cursor: 'pointer', fontSize: 18,
+              }}>✕</button>
+            </div>
+            <div style={{ padding: 8 }}>
+              <ScheduleManager />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Three-column layout */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar with tabs */}
-        <div style={{ width: 52, borderRight: '1px solid #30363d', background: '#161b22', display: 'flex', flexDirection: 'column', padding: '4px 0' }}>
-          {tabs.map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '10px 0', background: 'transparent', cursor: 'pointer', fontSize: 18,
-                border: 'none', borderLeft: activeTab === tab.id ? '3px solid #58a6ff' : '3px solid transparent',
-                color: activeTab === tab.id ? '#c9d1d9' : '#8b949e',
-              }}
-              title={typeof tab.label === 'string' ? tab.label : undefined}
-            >
-              {tab.label}
+        {/* Left column: Task Tree (fixed width) */}
+        <div style={{
+          width: 320, flexShrink: 0,
+          display: 'flex', flexDirection: 'column',
+          borderRight: '1px solid #30363d', background: '#0d1117',
+        }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <TreeView
+              tasks={tasks} agents={agents}
+              selectedTaskId={selectedTaskId}
+              onDispatch={handleDispatch} onAbort={handleAbort}
+              onDelete={handleDelete}
+              onSelect={handleSelectTask}
+            />
+          </div>
+          <form onSubmit={handleSubmitTask} style={{
+            display: 'flex', gap: 8, padding: '8px 12px',
+            borderTop: '1px solid #30363d', background: '#161b22',
+          }}>
+            <input
+              type="text"
+              value={taskInput}
+              onChange={(e) => setTaskInput(e.target.value)}
+              placeholder={intl.formatMessage({ id: 'placeholder.taskDescription' })}
+              style={inputStyle}
+            />
+            <button type="submit" style={btnStyle}>
+              <FormattedMessage id="button.addTask" />
             </button>
-          ))}
+          </form>
         </div>
 
-        {/* Content area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d1117' }}>
-          {activeTab === 'tasks' && (
-            <TreeView tasks={tasks} onDispatch={handleDispatch} onAbort={handleAbort} />
+        {/* Middle column: Stream Console (dynamic width) */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d1117', minWidth: 0 }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid #30363d', paddingLeft: 12 }}>
+            <span style={{ padding: '8px 0', fontSize: 13, color: '#c9d1d9', fontWeight: 600 }}>
+              <FormattedMessage id="tab.console" />
+            </span>
+            {selectedTask && (
+              <span style={{ padding: '8px 12px', fontSize: 12, color: '#8b949e' }}>
+                — {selectedTask.description}
+              </span>
+            )}
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <StreamConsole sessions={sessions} activeSessionId={activeSessionId} />
+          </div>
+          {/* Review panel for awaiting_review tasks */}
+          {selectedTask?.status === 'awaiting_review' && (
+            <ReviewPanel
+              task={selectedTask}
+              onApprove={handleApprove}
+              onReject={handleReject}
+            />
           )}
-          {activeTab === 'console' && (
-            <>
-              <div style={{ display: 'flex', borderBottom: '1px solid #30363d', paddingLeft: 12 }}>
-                <span style={{ padding: '8px 0', fontSize: 13, color: '#c9d1d9', fontWeight: 600 }}>
-                  <FormattedMessage id="tab.console" />
-                </span>
-              </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <StreamConsole sessions={sessions} activeSessionId={activeSessionId} />
-              </div>
-            </>
+          {/* Follow-up prompt input for selected running task */}
+          {activeSessionId && (
+            <form onSubmit={handleFollowUpSubmit} style={{
+              display: 'flex', gap: 8, padding: '8px 12px',
+              borderTop: '1px solid #30363d', background: '#161b22',
+            }}>
+              <input
+                type="text"
+                value={followUpInput}
+                onChange={(e) => setFollowUpInput(e.target.value)}
+                placeholder={intl.formatMessage({ id: 'placeholder.followUp' })}
+                style={inputStyle}
+              />
+              <button type="submit" title={intl.formatMessage({ id: 'button.continuePrompt' })} style={{
+                ...btnStyle, background: '#1f6feb',
+              }}>
+                <FormattedMessage id="button.continuePrompt" />
+              </button>
+            </form>
           )}
-          {activeTab === 'timeline' && (
-            <>
-              <div style={{ display: 'flex', borderBottom: '1px solid #30363d', paddingLeft: 12 }}>
-                <span style={{ padding: '8px 0', fontSize: 13, color: '#c9d1d9', fontWeight: 600 }}>
-                  <FormattedMessage id="tab.timeline" />
-                </span>
-              </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <Timeline entries={timelineEntries} />
-              </div>
-            </>
-          )}
-          {activeTab === 'health' && (
-            <HealthDashboard agents={agents} stale={healthStale} />
-          )}
-          {activeTab === 'schedule' && (
-            <ScheduleManager />
-          )}
+        </div>
+
+        {/* Right column: Health Dashboard (fixed width, right-aligned) */}
+        <div style={{
+          width: 300, flexShrink: 0,
+          borderLeft: '1px solid #30363d', background: '#0d1117', overflow: 'auto',
+        }}>
+          <HealthDashboard agents={agents} stale={healthStale} />
         </div>
       </div>
-
-      <ControlBar
-        connected={connected}
-        isReconnecting={isReconnecting}
-        reconnectAttempts={reconnectAttempts}
-        permissionLevel={permissionLevel}
-        onSetPermission={handleSetPermission}
-        onCreateTask={handleCreateTask}
-      />
     </div>
   )
 }

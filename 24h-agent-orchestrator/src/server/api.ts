@@ -41,6 +41,14 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     },
   )
 
+  app.delete<{ Params: { taskId: string } }>(
+    '/api/task/:taskId',
+    async (request) => {
+      orchestrator.deleteTask(request.params.taskId)
+      return { success: true }
+    },
+  )
+
   app.post<{ Body: { level: string } }>(
     '/api/config/permission',
     async (request) => {
@@ -120,6 +128,57 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
           error: err instanceof Error ? err.message : String(err),
         })
       }
+    },
+  )
+
+  // ── Human Review ──
+
+  app.post<{ Params: { taskId: string }; Body: { feedback?: string } }>(
+    '/api/task/:taskId/approve',
+    async (request, reply) => {
+      try {
+        await orchestrator.approveTask(request.params.taskId, request.body?.feedback)
+        return { success: true }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('not found')) {
+          return reply.status(404).send({ error: err.message })
+        }
+        return reply.status(409).send({
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    },
+  )
+
+  app.post<{ Params: { taskId: string }; Body: { feedback: string } }>(
+    '/api/task/:taskId/reject',
+    async (request, reply) => {
+      try {
+        const { feedback } = request.body
+        if (!feedback) {
+          return reply.status(400).send({ error: 'feedback is required' })
+        }
+        await orchestrator.rejectTask(request.params.taskId, feedback)
+        return { success: true }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('not found')) {
+          return reply.status(404).send({ error: err.message })
+        }
+        return reply.status(409).send({
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
+    },
+  )
+
+  app.get('/api/tasks/awaiting-review', async () => {
+    return orchestrator.getTasksAwaitingReview()
+  })
+
+  app.get<{ Params: { taskId: string } }>(
+    '/api/task/:taskId/review-history',
+    async (request) => {
+      return orchestrator.getReviewHistory(request.params.taskId)
     },
   )
 }

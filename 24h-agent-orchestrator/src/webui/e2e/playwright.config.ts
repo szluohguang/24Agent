@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx tsx src/webui/e2e/test-server.ts',
+    command: 'npx tsx test-server.ts',
     url: 'http://localhost:3000/health',
     reuseExistingServer: !process.env.CI,
     timeout: 15000,

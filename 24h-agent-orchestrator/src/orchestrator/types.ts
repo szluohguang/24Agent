@@ -1,5 +1,17 @@
 /** 任务生命周期状态 */
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed'
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_review' | 'rejected'
+
+/** 审核操作类型 */
+export type ReviewAction = 'approved' | 'rejected'
+
+/** 审核记录 */
+export interface ReviewRecord {
+  taskId: string
+  action: ReviewAction
+  feedback?: string
+  reviewer: 'user' | 'system'
+  reviewedAt: number
+}
 
 /** 单个任务的完整状态：用于 DAG 调度和结果追踪 */
 export interface TaskState {
@@ -16,6 +28,8 @@ export interface TaskState {
   priority: number          // 越小越优先，manual=0 > scheduled=1
   permission: PermissionLevel
   budget: number
+  result?: TaskResult       // 评估结果（awaiting_review 时暂存，供审核面板展示）
+  reviewHistory?: ReviewRecord[]  // 审核历史记录
 }
 
 /** Agent 健康状态 */
@@ -25,7 +39,7 @@ export type HealthStatus = 'healthy' | 'suspected' | 'hung' | 'dead'
 export interface AgentState {
   sessionId: string
   taskId: string
-  status: 'creating' | 'running' | 'idle' | 'error'
+  status: 'creating' | 'running' | 'idle' | 'error' | 'completed' | 'failed' | 'recovering' | 'aborted'
   stream: string[]           // SSE text delta 缓冲区
   startTime: number
   model?: string

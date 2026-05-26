@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 
 interface ScheduleFormData {
   description: string
@@ -12,6 +12,7 @@ interface ScheduleFormData {
 import { computeNextCronRuns } from '../cron-utils.js'
 
 export function ScheduleForm({ onSubmit, initial }: { onSubmit: (data: ScheduleFormData) => void; initial?: ScheduleFormData }) {
+  const intl = useIntl()
   const [desc, setDesc] = useState(initial?.description || '')
   const [cron, setCron] = useState(initial?.cronExpr || '')
   const [perm, setPerm] = useState(initial?.permission || 'safe')
@@ -39,22 +40,22 @@ export function ScheduleForm({ onSubmit, initial }: { onSubmit: (data: ScheduleF
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12 }}>
       <input
         value={desc} onChange={(e) => setDesc(e.target.value)}
-        placeholder="Task description"
+        placeholder={intl.formatMessage({ id: 'scheduleform.desc' })}
         style={inputStyle}
       />
       <input
         value={cron} onChange={(e) => { setCron(e.target.value); computePreview(e.target.value) }}
-        placeholder="Cron expression (e.g., 0 9 * * 1)"
+        placeholder={intl.formatMessage({ id: 'scheduleform.cron' })}
         style={{ ...inputStyle, fontFamily: 'monospace' }}
       />
       <div style={{ display: 'flex', gap: 8 }}>
         <select value={perm} onChange={(e) => setPerm(e.target.value as typeof perm)} style={selectStyle}>
-          <option value="trusted">Trusted</option>
-          <option value="safe">Safe</option>
-          <option value="strict">Strict</option>
+          <option value="trusted"><FormattedMessage id="permission.trusted" /></option>
+          <option value="safe"><FormattedMessage id="permission.safe" /></option>
+          <option value="strict"><FormattedMessage id="permission.strict" /></option>
         </select>
-        <input type="number" value={budget} onChange={(e) => setBudget(Number(e.target.value))} placeholder="Budget" style={{ ...inputStyle, width: 100 }} />
-        <input type="number" value={retries} onChange={(e) => setRetries(Number(e.target.value))} placeholder="Max retries" style={{ ...inputStyle, width: 100 }} />
+        <input type="number" value={budget} onChange={(e) => setBudget(Number(e.target.value))} placeholder={intl.formatMessage({ id: 'scheduleform.budget' })} style={{ ...inputStyle, width: 100 }} />
+        <input type="number" value={retries} onChange={(e) => setRetries(Number(e.target.value))} placeholder={intl.formatMessage({ id: 'scheduleform.maxRetries' })} style={{ ...inputStyle, width: 100 }} />
       </div>
       {preview.length > 0 && (
         <div style={{ fontSize: 12, color: '#8b949e' }}>
@@ -62,7 +63,7 @@ export function ScheduleForm({ onSubmit, initial }: { onSubmit: (data: ScheduleF
         </div>
       )}
       <button type="submit" style={btnStyle}>
-        {initial ? 'Update' : 'Create'}
+        {initial ? <FormattedMessage id="scheduleform.update" /> : <FormattedMessage id="scheduleform.create" />}
       </button>
     </form>
   )

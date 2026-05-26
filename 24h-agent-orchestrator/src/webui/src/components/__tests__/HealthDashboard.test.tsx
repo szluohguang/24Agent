@@ -31,6 +31,6 @@ describe('HealthDashboard', () => {
 
   it('shows no agents message when list is empty and not stale', () => {
     renderWithIntl(<HealthDashboard agents={[]} stale={false} />)
-    expect(screen.getByText(/No active agents/)).toBeInTheDocument()
+    expect(screen.getByText(/health\.noAgents/)).toBeInTheDocument()
   })
 })

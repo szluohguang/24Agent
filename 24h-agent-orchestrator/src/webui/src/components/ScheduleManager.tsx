@@ -72,9 +72,9 @@ export function ScheduleManager() {
             <tr style={{ borderBottom: '1px solid #30363d', color: '#8b949e' }}>
               <th style={{ padding: '8px 12px', textAlign: 'left' }}><FormattedMessage id="app.tasks" /></th>
               <th style={{ padding: '8px 12px', textAlign: 'left' }}><FormattedMessage id="schedule.cron" /></th>
-              <th style={{ padding: '8px 12px', textAlign: 'center' }}>Enabled</th>
+              <th style={{ padding: '8px 12px', textAlign: 'center' }}><FormattedMessage id="schedule.enabled" /></th>
               <th style={{ padding: '8px 12px', textAlign: 'left' }}><FormattedMessage id="schedule.lastRun" /></th>
-              <th style={{ padding: '8px 12px' }}>Actions</th>
+              <th style={{ padding: '8px 12px' }}><FormattedMessage id="schedule.actions" /></th>
             </tr>
           </thead>
           <tbody>
@@ -91,11 +91,11 @@ export function ScheduleManager() {
                       border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontSize: 12,
                     }}
                   >
-                    {s.enabled ? 'ON' : 'OFF'}
+                    <FormattedMessage id={s.enabled ? 'schedule.on' : 'schedule.off'} />
                   </button>
                 </td>
                 <td style={{ padding: '8px 12px', color: '#8b949e' }}>
-                  {s.lastTriggered ? new Date(s.lastTriggered).toLocaleString() : '-'}
+                  {s.lastTriggered ? new Date(s.lastTriggered).toLocaleString() : <FormattedMessage id="schedule.empty" />}
                 </td>
                 <td style={{ padding: '8px 12px' }}>
                   <button onClick={() => handleDelete(s.id)} style={delBtnStyle}>

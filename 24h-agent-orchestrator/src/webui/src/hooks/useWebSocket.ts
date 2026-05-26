@@ -8,6 +8,7 @@ export type WsMessage =
   | { type: 'agent-state'; sessionId: string; state: unknown }
   | { type: 'health-report'; data: unknown }
   | { type: 'error'; message: string }
+  | { type: 'follow-up-prompt'; sessionId: string; prompt: string }
 
 export function useWebSocket(url: string) {
   const wsRef = useRef<WebSocket | null>(null)

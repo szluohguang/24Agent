@@ -80,30 +80,23 @@ npm run test:e2e   # playwright test (需先 build)
 步骤 2: 按类型执行工作流。**每个产生代码的 task 必须按以下 micro-cycle 执行：**
 
 ```
-┌─ Task 级微循环（每个 task 独立执行）──────────────────┐
-│                                                        │
-│  [代码类 task]                                          │
-│   ├─ 1. 写这个 task 的测试（Red）                       │
-│   ├─ 2. 运行测试，确认 FAIL（验证红）                   │
-│   ├─ 3. 写最小实现代码（Green）                         │
-│   ├─ 4. 运行测试，确认 PASS（验证绿）                   │
-│   └─ 5. 重构（保持绿）                                 │
-│                                                        │
-│  [配置/翻译/data 类 task]                               │
-│   └─ 直接创建，无需 TDD 循环                            │
-│                                                        │
-│  标记 task 为 [x] 前必须满足：                           │
-│  - 代码类: Red→Green 循环完成，FAIL→PASS 输出在手        │
-│  - 配置类: 文件创建完成                                  │
-│                                                        │
-└────────────────────────────────────────────────────────┘
+ subagent-driven-development → 测试驱动开发
+    │    ├── 实现子 agent (实现 + 测试 + 提交 + 自审)
+    │    ├── 规范审查 (代码是否符合 spec)
+    │    └── 代码质量审查 (代码质量)
+    │
+    ▼
+ verification-before-completion → 验证后再声称完成
+    │
+    ▼
+finishing-a-development-branch → 合并/PR/保留/放弃
+    │
+    ▼
+推送到远程仓库 git commit（中文）
+    │
+    ▼
+标记 task 为 [x] 前必须满足： 
 
-  ├─ 新需求 → skill("test-driven-development") → 按 micro-cycle 逐 task 推进
-  ├─ Bug    → skill("systematic-debugging") → 根因调查 → 重现 → 修复
-  └─ 模糊   → skill("brainstorming") → 设计方案 → 用户确认
-步骤 3: 验证链（顺序执行，失败不得跳过）→ typecheck → build → test
-步骤 4: Code Review → 加载 skill("verification-before-completion")
-步骤 5: 归档 → 日志 + 报告 + git commit（中文）
 ```
 
 ### 规则 4：执行日志 & 报告格式

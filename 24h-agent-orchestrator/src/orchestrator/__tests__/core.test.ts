@@ -1,6 +1,26 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { Orchestrator } from '../core.js'
 import { createMockClient, createMockCallbacks, createOrchestratorWithMockClient } from '../../test-utils/factories.js'
+
+function createReviewTestSetup() {
+  const ctx = createOrchestratorWithMockClient()
+  ctx.orchestrator.setPermissionLevel('strict')
+
+  const id = ctx.orchestrator.addTask('Review test task')
+  ctx.mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-review-1' } })
+  ctx.mockClient.mocks.sessionMessages.mockResolvedValue({
+    data: {
+      items: [
+        { role: 'assistant', summary: { body: 'Review test done' }, cost: 0.005, tokens: { input: 200, output: 100 } },
+      ],
+    },
+  })
+  ctx.mockClient.mocks.sessionDiff.mockResolvedValue({
+    data: [{ file: 'src/test.ts' }],
+  })
+
+  return { ...ctx, id }
+}
 
 describe('Orchestrator', () => {
   let orchestrator: Orchestrator
@@ -193,6 +213,57 @@ describe('Orchestrator', () => {
       expect(orchestrator['tasks'].get(id)!.status).toBe('running')
     })
 
+    it('should handle session idle with strict permission as awaiting_review', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      ctx.orchestrator.setPermissionLevel('strict')
+      const id = ctx.orchestrator.addTask('Strict review')
+      ctx.mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-strict-1' } })
+      await ctx.orchestrator.dispatchTask(id)
+
+      ctx.mockClient.mocks.sessionMessages.mockResolvedValue({
+        data: {
+          items: [
+            { role: 'assistant', summary: { body: 'Done' }, cost: 0.003, tokens: { input: 100, output: 50 } },
+          ],
+        },
+      })
+      ctx.mockClient.mocks.sessionDiff.mockResolvedValue({ data: [{ file: 'src/x.ts' }] })
+
+      const state = ctx.orchestrator.getState()
+      const agent = state.agents[0]
+      await ctx.orchestrator['handleSessionComplete'](agent.sessionId)
+
+      const task = ctx.orchestrator['tasks'].get(id)!
+      expect(task.status).toBe('awaiting_review')
+      expect(task.result).toBeDefined()
+      expect(task.result!.summary).toBe('Done')
+      expect(task.result!.cost).toBe(0.003)
+    })
+
+    it('should mark task as completed for safe mode after session idle', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      ctx.orchestrator.setPermissionLevel('safe')  // 非 strict
+      const id = ctx.orchestrator.addTask('Safe review')
+      ctx.mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-safe-1' } })
+      await ctx.orchestrator.dispatchTask(id)
+
+      ctx.mockClient.mocks.sessionMessages.mockResolvedValue({
+        data: {
+          items: [
+            { role: 'assistant', summary: { body: 'Done safe' }, cost: 0.001, tokens: { input: 50, output: 25 } },
+          ],
+        },
+      })
+      ctx.mockClient.mocks.sessionDiff.mockResolvedValue({ data: [] })
+
+      const state = ctx.orchestrator.getState()
+      const agent = state.agents[0]
+      await ctx.orchestrator['handleSessionComplete'](agent.sessionId)
+
+      const task = ctx.orchestrator['tasks'].get(id)!
+      expect(task.status).toBe('completed')
+    })
+
     it('should mark task as failed after max retries', async () => {
       const id = orchestrator.addTask('Max retries')
       mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-retry-x' } })
@@ -209,4 +280,113 @@ describe('Orchestrator', () => {
       expect(task.error).toContain('Max retries')
     })
   })
+
+  describe('approveTask()', () => {
+    it('should approve a task and mark it as completed', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      ctx.orchestrator.setPermissionLevel('strict')
+      const id = ctx.orchestrator.addTask('Approve test')
+      ctx.mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-approve-1' } })
+      await ctx.orchestrator.dispatchTask(id)
+
+      ctx.mockClient.mocks.sessionMessages.mockResolvedValue({
+        data: {
+          items: [
+            { role: 'assistant', summary: { body: 'Done' }, cost: 0.002, tokens: { input: 80, output: 40 } },
+          ],
+        },
+      })
+      ctx.mockClient.mocks.sessionDiff.mockResolvedValue({ data: [] })
+
+      const state = ctx.orchestrator.getState()
+      const agent = state.agents[0]
+      await ctx.orchestrator['handleSessionComplete'](agent.sessionId)
+
+      await ctx.orchestrator.approveTask(id)
+
+      const task = ctx.orchestrator['tasks'].get(id)!
+      expect(task.status).toBe('completed')
+      expect(ctx.callbacks.onStateChange).toHaveBeenCalled()
+    })
+
+    it('should throw for non-existent task on approve', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      await expect(ctx.orchestrator.approveTask('nonexistent'))
+        .rejects.toThrow('Task nonexistent not found')
+    })
+
+    it('should throw if task is not awaiting_review', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      const id = ctx.orchestrator.addTask('Not awaiting')
+      await expect(ctx.orchestrator.approveTask(id))
+        .rejects.toThrow('not awaiting review')
+    })
+  })
+
+  describe('rejectTask()', () => {
+    it('should reject a task with feedback', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      ctx.orchestrator.setPermissionLevel('strict')
+      const id = ctx.orchestrator.addTask('Reject test')
+      ctx.mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-reject-1' } })
+      await ctx.orchestrator.dispatchTask(id)
+
+      ctx.mockClient.mocks.sessionMessages.mockResolvedValue({
+        data: {
+          items: [
+            { role: 'assistant', summary: { body: 'Reject me' }, cost: 0.001, tokens: { input: 30, output: 15 } },
+          ],
+        },
+      })
+      ctx.mockClient.mocks.sessionDiff.mockResolvedValue({ data: [] })
+
+      const state = ctx.orchestrator.getState()
+      const agent = state.agents[0]
+      await ctx.orchestrator['handleSessionComplete'](agent.sessionId)
+
+      await ctx.orchestrator.rejectTask(id, 'Need better implementation')
+
+      const task = ctx.orchestrator['tasks'].get(id)!
+      expect(task.status).toBe('rejected')
+      expect(task.reviewHistory).toHaveLength(1)
+      expect(task.reviewHistory![0].action).toBe('rejected')
+      expect(task.reviewHistory![0].feedback).toBe('Need better implementation')
+    })
+
+    it('should require feedback when rejecting', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      const id = ctx.orchestrator.addTask('No feedback')
+      // Manually set awaiting_review for test
+      const task = ctx.orchestrator['tasks'].get(id)!
+      task.status = 'awaiting_review'
+      await expect(ctx.orchestrator.rejectTask(id, ''))
+        .rejects.toThrow('Feedback is required')
+    })
+  })
+
+  describe('rejected task re-dispatch', () => {
+    it('should inject rejection feedback into prompt on re-dispatch', async () => {
+      const ctx = createOrchestratorWithMockClient()
+      ctx.orchestrator.setPermissionLevel('strict')
+      const id = ctx.orchestrator.addTask('Redispatch test')
+
+      // Set up task as rejected with feedback
+      const task = ctx.orchestrator['tasks'].get(id)!
+      task.status = 'rejected'
+      task.reviewHistory = [{
+        taskId: id, action: 'rejected', feedback: 'Please add error handling', reviewer: 'user', reviewedAt: Date.now(),
+      }]
+
+      ctx.mockClient.mocks.sessionCreate.mockResolvedValue({ data: { id: 'session-redispatch-1' } })
+      await ctx.orchestrator.dispatchTask(id)
+
+      // Verify prompt includes feedback
+      const promptCall = ctx.mockClient.mocks.sessionPrompt.mock.calls[0]?.[0]
+      expect(promptCall).toBeDefined()
+      const promptArgs = JSON.stringify(promptCall)
+      expect(promptArgs).toContain('前次执行反馈')
+      expect(promptArgs).toContain('Please add error handling')
+    })
+  })
+
 })

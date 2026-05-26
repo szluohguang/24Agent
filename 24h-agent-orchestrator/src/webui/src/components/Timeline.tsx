@@ -72,7 +72,7 @@ export function Timeline({ entries }: TimelineProps) {
           </button>
         ))}
         <span style={{ flex: 1 }} />
-        <span style={{ color: '#8b949e', fontSize: 11, padding: '2px 4px' }}>{filtered.length} events</span>
+        <span style={{ color: '#8b949e', fontSize: 11, padding: '2px 4px' }}><FormattedMessage id="timeline.events" values={{ count: filtered.length }} /></span>
       </div>
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 8, fontSize: 12 }}>
         {filtered.map((entry) => {

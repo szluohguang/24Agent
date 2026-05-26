@@ -1,6 +1,6 @@
 import type { OpencodeClient } from '@opencode-ai/sdk/v2'
 import type Database from 'better-sqlite3'
-import type { TaskState, AgentState, TimelineEntry, PermissionLevel, ScheduledTask, HealthStatus } from './types.js'
+import type { TaskState, AgentState, TimelineEntry, PermissionLevel, ScheduledTask, HealthStatus, ReviewRecord } from './types.js'
 import { createSubAgentSession, sendTaskPrompt, abortSession } from './acp-manager.js'
 import { evaluateTaskCompletion } from '../observer/evaluator.js'
 import { subscribeGlobalEvents, type EventHandlers } from '../observer/event-stream.js'
@@ -145,6 +145,17 @@ export class Orchestrator {
     subscribeGlobalEvents(this.client, this.eventHandlers, this.abortSignal.signal)
     this.healthMonitor.start()
 
+    // Load persisted state into memory before recovery
+    const storedTasks = this.store.getAllTasks()
+    for (const t of storedTasks) {
+      this.tasks.set(t.id, t)
+    }
+    const storedAgents = this.store.getAllAgents()
+    for (const a of storedAgents) {
+      this.agents.set(a.sessionId, a)
+      this.healthMonitor.registerSession(a.sessionId, a)
+    }
+
     // 启动时恢复未完成任务
     await this.recovery.recoverStartupTasks(async (taskId) => this.dispatchTask(taskId))
 
@@ -247,11 +258,15 @@ export class Orchestrator {
     this.callbacks.onStateChange()
     this.addTimeline('main', sessionId, 'dispatch', `Dispatching: ${task.description}`)
 
+    const feedbackContext = task.reviewHistory && task.reviewHistory.length > 0
+      ? `\n\n## 前次执行反馈\n${task.reviewHistory.filter(r => r.action === 'rejected').map(r => r.feedback).filter(Boolean).join('\n')}`
+      : ''
+
     const promptText = `You are a code development sub-agent.
 
 ## Task
 ${task.description}
-
+${feedbackContext}
 ## Instructions
 1. Read the OpenSpec documents to understand the design
 2. Look at the existing code to understand the architecture
@@ -264,6 +279,7 @@ ${task.description}
     agentState.status = 'running'
     this.store.updateAgent(agentState)
     this.callbacks.onAgentStateChange(sessionId, { status: 'running' })
+    this.callbacks.onStateChange()
   }
 
   private async handleSessionComplete(sessionId: string) {
@@ -276,19 +292,32 @@ ${task.description}
 
       const result = await evaluateTaskCompletion(this.client, sessionId)
 
-      task.status = 'completed'
       task.updatedAt = Date.now()
       this.budgetSpent += result.cost
+      task.result = result
 
-      this.store.updateTask(task)
-      this.agents.delete(sessionId)
-      this.healthMonitor.unregisterSession(sessionId)
-      this.scheduler.updateTaskStatus(agent.taskId, 'completed')
-      this.scheduler.onTaskCompleted(agent.taskId)
-      this.scheduler.onSessionEnded()
+      if (task.permission === 'strict') {
+        task.status = 'awaiting_review'
+        this.store.updateTask(task)
+        agent.status = 'idle'
+        this.store.updateAgent(agent)
 
-      this.addTimeline('sub', sessionId, 'complete',
-        `Task completed: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+        this.addTimeline('sub', sessionId, 'awaiting-review',
+          `Task awaiting review: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+      } else {
+        task.status = 'completed'
+        this.store.updateTask(task)
+        agent.status = 'completed'
+        agent.healthStatus = 'healthy'
+        this.store.updateAgent(agent)
+        this.healthMonitor.unregisterSession(sessionId)
+        this.scheduler.updateTaskStatus(agent.taskId, 'completed')
+        this.scheduler.onTaskCompleted(agent.taskId)
+        this.scheduler.onSessionEnded()
+
+        this.addTimeline('sub', sessionId, 'complete',
+          `Task completed: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+      }
 
       this.callbacks.onStateChange()
     } catch (err) {
@@ -312,15 +341,19 @@ ${task.description}
       task.status = 'failed'
       task.error = `Max retries (${task.maxRetries}) exceeded`
       this.store.updateTask(task)
+      agent.status = 'failed'
+      agent.healthStatus = 'dead'
+      this.store.updateAgent(agent)
       this.scheduler.updateTaskStatus(agent.taskId, 'failed')
       this.scheduler.onSessionEnded()
-      this.agents.delete(sessionId)
 
       this.addTimeline('system', sessionId, 'max-retries',
         `Task failed: ${task.description} - max retries exceeded`)
     } else {
       this.store.updateTask(task)
-      this.agents.delete(sessionId)
+      agent.status = 'error'
+      agent.healthStatus = 'dead'
+      this.store.updateAgent(agent)
       this.scheduler.onSessionEnded()
 
       this.addTimeline('system', sessionId, 'retry',
@@ -345,7 +378,8 @@ ${task.description}
       task.retryCount++
       task.updatedAt = Date.now()
       this.store.updateTask(task)
-      this.agents.delete(sessionId)
+      agent.status = 'recovering'
+      this.store.updateAgent(agent)
       this.healthMonitor.unregisterSession(sessionId)
       this.scheduler.onSessionEnded()
 
@@ -357,13 +391,35 @@ ${task.description}
       task.error = 'Session hung, max retries exceeded'
       task.updatedAt = Date.now()
       this.store.updateTask(task)
-      this.agents.delete(sessionId)
+      agent.status = 'failed'
+      agent.healthStatus = 'dead'
+      this.store.updateAgent(agent)
       this.healthMonitor.unregisterSession(sessionId)
       this.scheduler.onSessionEnded()
 
       this.addTimeline('system', sessionId, 'hung-failed',
         `Task failed: ${task.description} - session hung, max retries exceeded`)
     }
+    this.callbacks.onStateChange()
+  }
+
+  deleteTask(taskId: string): void {
+    const task = this.tasks.get(taskId)
+    if (!task) return
+
+    if (task.sessionId) {
+      const agent = this.agents.get(task.sessionId)
+      if (agent) {
+        this.agents.delete(task.sessionId)
+        this.healthMonitor.unregisterSession(task.sessionId)
+        this.store.deleteAgent(task.sessionId)
+      }
+    }
+
+    this.tasks.delete(taskId)
+    this.store.deleteTask(taskId)
+    this.scheduler.onSessionEnded()
+    this.addTimeline('user', 'system', 'task-delete', `Task deleted: ${task.description}`)
     this.callbacks.onStateChange()
   }
 
@@ -377,7 +433,11 @@ ${task.description}
       } catch {
         // stale session
       }
-      this.agents.delete(task.sessionId)
+      const abortedAgent = this.agents.get(task.sessionId)
+      if (abortedAgent) {
+        abortedAgent.status = 'aborted'
+        this.store.updateAgent(abortedAgent)
+      }
       this.healthMonitor.unregisterSession(task.sessionId)
     }
 
@@ -436,5 +496,101 @@ ${task.description}
   deleteSchedule(id: string): void {
     this.scheduler.unregisterCronJob(id)
     this.store.deleteSchedule(id)
+  }
+
+  // ── Continue prompt ──
+
+  async continuePrompt(sessionId: string, promptText: string): Promise<void> {
+    const agent = this.agents.get(sessionId)
+    if (!agent) throw new Error(`Session ${sessionId} not found`)
+
+    await sendTaskPrompt(this.client, sessionId, promptText)
+    this.addTimeline('user', sessionId, 'follow-up', `Follow-up: ${promptText}`)
+    this.callbacks.onStateChange()
+  }
+
+  // ── Review queries ──
+
+  getTasksAwaitingReview(): TaskState[] {
+    return Array.from(this.tasks.values()).filter(t => t.status === 'awaiting_review')
+  }
+
+  getReviewHistory(taskId: string): ReviewRecord[] {
+    return this.store.getReviewsByTaskId(taskId)
+  }
+
+  // ── Human Review ──
+
+  async approveTask(taskId: string, feedback?: string): Promise<void> {
+    const task = this.tasks.get(taskId)
+    if (!task) throw new Error(`Task ${taskId} not found`)
+    if (task.status !== 'awaiting_review') throw new Error(`Task ${taskId} is not awaiting review`)
+
+    task.status = 'completed'
+    task.updatedAt = Date.now()
+
+    if (!task.reviewHistory) task.reviewHistory = []
+    task.reviewHistory.push({
+      taskId, action: 'approved', feedback, reviewer: 'user', reviewedAt: Date.now(),
+    })
+
+    this.store.updateTask(task)
+    this.store.insertReview({
+      taskId, action: 'approved', feedback, reviewer: 'user', reviewedAt: Date.now(),
+    })
+
+    if (task.sessionId) {
+      const agent = this.agents.get(task.sessionId)
+      if (agent) {
+        agent.status = 'completed'
+        agent.healthStatus = 'healthy'
+        this.store.updateAgent(agent)
+        this.healthMonitor.unregisterSession(task.sessionId)
+      }
+    }
+
+    this.scheduler.updateTaskStatus(taskId, 'completed')
+    this.scheduler.onTaskCompleted(taskId)
+    this.scheduler.onSessionEnded()
+
+    this.addTimeline('user', task.sessionId || 'system', 'review-approved',
+      `Review approved: ${task.description}${feedback ? ` (feedback: ${feedback})` : ''}`)
+    this.callbacks.onStateChange()
+  }
+
+  async rejectTask(taskId: string, feedback: string): Promise<void> {
+    if (!feedback) throw new Error('Feedback is required when rejecting a task')
+
+    const task = this.tasks.get(taskId)
+    if (!task) throw new Error(`Task ${taskId} not found`)
+    if (task.status !== 'awaiting_review') throw new Error(`Task ${taskId} is not awaiting review`)
+
+    task.status = 'rejected'
+    task.updatedAt = Date.now()
+
+    if (!task.reviewHistory) task.reviewHistory = []
+    task.reviewHistory.push({
+      taskId, action: 'rejected', feedback, reviewer: 'user', reviewedAt: Date.now(),
+    })
+
+    this.store.updateTask(task)
+    this.store.insertReview({
+      taskId, action: 'rejected', feedback, reviewer: 'user', reviewedAt: Date.now(),
+    })
+
+    if (task.sessionId) {
+      const agent = this.agents.get(task.sessionId)
+      if (agent) {
+        agent.status = 'completed'
+        this.store.updateAgent(agent)
+        this.healthMonitor.unregisterSession(task.sessionId)
+      }
+    }
+
+    this.scheduler.onSessionEnded()
+
+    this.addTimeline('user', task.sessionId || 'system', 'review-rejected',
+      `Review rejected: ${task.description} (feedback: ${feedback})`)
+    this.callbacks.onStateChange()
   }
 }
