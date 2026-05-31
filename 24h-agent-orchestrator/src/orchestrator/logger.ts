@@ -59,38 +59,46 @@ let globalLogger: Logger | null = null
  */
 export class Logger {
   private level: LogLevel
+  private logDir: string
   private logStream: fs.WriteStream | null = null
+  private currentDate: string
 
   constructor(options?: { level?: LogLevel; logDir?: string; logFile?: string }) {
-    // 日志级别选择：NODE_ENV=production 时默认为 INFO（过滤 DEBUG），否则 DEBUG
     const isProd = process.env['NODE_ENV'] === 'production'
     this.level = options?.level ?? (isProd ? LogLevel.INFO : LogLevel.DEBUG)
 
-    // 按日期拆分日志文件，统一写入 logs/ 目录
-    const logDir = options?.logDir ?? path.resolve(process.cwd(), 'logs')
-    const dateStr = new Date().toISOString().slice(0, 10)
-    const logFile = options?.logFile ?? `orchestrator-${dateStr}.log`
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true })
+    this.logDir = options?.logDir ?? path.resolve(process.cwd(), 'logs')
+    this.currentDate = new Date().toISOString().slice(0, 10)
+    const logFile = options?.logFile ?? `orchestrator-${this.currentDate}.log`
+    if (!fs.existsSync(this.logDir)) {
+      fs.mkdirSync(this.logDir, { recursive: true })
     }
-    this.logStream = fs.createWriteStream(path.join(logDir, logFile), { flags: 'a' })
+    this.logStream = fs.createWriteStream(path.join(this.logDir, logFile), { flags: 'a' })
 
     this.info('startup', `Logger initialized, level=${LEVEL_NAMES[this.level]}, file=${logFile}`)
   }
 
-  private write(level: LogLevel, tag: string, message: string, data?: unknown) {
-    // 级别过滤：低于配置级别的跳过
-    if (level < this.level) return
+  /** 检查是否需要切换到新的日志文件（跨天时切换） */
+  private rotateIfNeeded() {
+    const today = new Date().toISOString().slice(0, 10)
+    if (today === this.currentDate) return
+    this.currentDate = today
+    const logFile = `orchestrator-${today}.log`
+    this.logStream?.end()
+    this.logStream = fs.createWriteStream(path.join(this.logDir, logFile), { flags: 'a' })
+  }
 
-    // 生产模式过滤：仅非核心标签且低于 WARN 的日志跳过
+  private write(level: LogLevel, tag: string, message: string, data?: unknown) {
+    if (level < this.level) return
     if (this.level >= LogLevel.INFO && level < LogLevel.WARN && !CORE_TAGS.has(tag)) return
+
+    this.rotateIfNeeded()
 
     const timestamp = localTimestamp()
     const levelName = LEVEL_NAMES[level]
     const dataStr = data ? ` ${JSON.stringify(data)}` : ''
     const line = `[${timestamp}] [${levelName}] [${tag}] ${message}${dataStr}`
 
-    // 控制台输出：错误级别用 stderr，其余用 stdout
     if (level >= LogLevel.ERROR) {
       console.error(line)
     } else if (level >= LogLevel.WARN) {
@@ -99,7 +107,6 @@ export class Logger {
       console.log(line)
     }
 
-    // 写入日志文件
     this.logStream?.write(line + '\n')
   }
 
