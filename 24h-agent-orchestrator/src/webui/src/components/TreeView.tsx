@@ -72,8 +72,46 @@ function TaskSummary({ tasks }: { tasks: TaskNode[] }) {
   )
 }
 
+const DIALOG_OVERLAY_STYLE: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+}
+
+const DIALOG_BOX_STYLE: React.CSSProperties = {
+  background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
+  padding: 24, maxWidth: 420,
+}
+
 export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onDelete, onSelect }: TreeViewProps) {
   const intl = useIntl()
+  const [hoveredTaskId, setHoveredTaskId] = React.useState<string | null>(null)
+  const [hoveredBtnId, setHoveredBtnId] = React.useState<string | null>(null)
+  const [confirmDeleteTaskId, setConfirmDeleteTaskId] = React.useState<string | null>(null)
+
+  const confirmDeleteTask = tasks.find((t) => t.id === confirmDeleteTaskId)
+  const isConfirmRunning = confirmDeleteTask?.status === 'running'
+
+  const handleDeleteClick = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (task?.status === 'running') {
+      setConfirmDeleteTaskId(taskId)
+    } else {
+      onDelete(taskId)
+    }
+  }
+
+  const handleConfirmDelete = () => {
+    if (!confirmDeleteTaskId) return
+    if (isConfirmRunning) {
+      onAbort(confirmDeleteTaskId)
+    }
+    onDelete(confirmDeleteTaskId)
+    setConfirmDeleteTaskId(null)
+  }
+
+  const dispatchHoverId = (taskId: string) => `dispatch-${taskId}`
+  const abortHoverId = (taskId: string) => `abort-${taskId}`
+  const deleteHoverId = (taskId: string) => `delete-${taskId}`
 
   if (tasks.length === 0) {
     return (
@@ -85,19 +123,50 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
 
   return (
     <div>
+      {confirmDeleteTaskId && (
+        <div style={DIALOG_OVERLAY_STYLE} onClick={() => setConfirmDeleteTaskId(null)}>
+          <div style={DIALOG_BOX_STYLE} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 14, color: '#c9d1d9', marginBottom: 16 }}>
+              {isConfirmRunning ? (
+                <FormattedMessage id="dialog.confirmDeleteRunning" />
+              ) : (
+                <FormattedMessage id="dialog.confirmDelete" />
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmDeleteTaskId(null)} style={{
+                padding: '6px 16px', background: '#21262d', color: '#c9d1d9',
+                border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+              }}>
+                <FormattedMessage id="dialog.cancel" />
+              </button>
+              <button onClick={handleConfirmDelete} style={{
+                padding: '6px 16px', background: '#da3633', color: '#fff',
+                border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+              }}>
+                <FormattedMessage id="dialog.confirm" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <TaskSummary tasks={tasks} />
       <div style={{ padding: 8 }}>
         {tasks.map((task) => {
           const agent = task.sessionId ? agents.find((a) => a.sessionId === task.sessionId) : undefined
           const isSelected = task.id === selectedTaskId
+          const isHovered = task.id === hoveredTaskId
           return (
             <div
               key={task.id}
               onClick={() => onSelect(task.id)}
+              onMouseEnter={() => setHoveredTaskId(task.id)}
+              onMouseLeave={() => setHoveredTaskId(null)}
               style={{
                 padding: '8px 12px', margin: '4px 0', borderRadius: 6,
                 background: isSelected ? '#1f2937' : '#161b22',
-                border: isSelected ? '1px solid #58a6ff' : '1px solid #30363d',
+                border: isHovered || isSelected ? '1px solid #58a6ff' : '1px solid #30363d',
                 fontSize: 13, cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
               }}
             >
@@ -116,7 +185,6 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
                 </span>
               </div>
 
-              {/* Subagent info */}
               {agent && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 11 }}>
                   <span style={{ fontFamily: 'monospace', color: '#8b949e' }}>
@@ -128,16 +196,51 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
                 {(task.status === 'pending' || task.status === 'rejected') && (
-                  <button onClick={() => onDispatch(task.id)} style={dispatchBtnStyle}><FormattedMessage id="task.dispatch" /></button>
+                  <button
+                    onClick={() => onDispatch(task.id)}
+                    onMouseEnter={() => setHoveredBtnId(dispatchHoverId(task.id))}
+                    onMouseLeave={() => setHoveredBtnId(null)}
+                    style={{
+                      ...dispatchBtnStyle,
+                      border: '1px solid',
+                      borderColor: hoveredBtnId === dispatchHoverId(task.id) ? '#3fb950' : 'transparent',
+                      transition: 'border-color 0.15s',
+                    }}
+                  >
+                    <FormattedMessage id="task.dispatch" />
+                  </button>
                 )}
                 {task.status === 'running' && (
-                  <button onClick={() => onAbort(task.id)} style={abortBtnStyle}><FormattedMessage id="task.abort" /></button>
+                  <button
+                    onClick={() => onAbort(task.id)}
+                    onMouseEnter={() => setHoveredBtnId(abortHoverId(task.id))}
+                    onMouseLeave={() => setHoveredBtnId(null)}
+                    style={{
+                      ...abortBtnStyle,
+                      border: '1px solid',
+                      borderColor: hoveredBtnId === abortHoverId(task.id) ? '#f85149' : 'transparent',
+                      transition: 'border-color 0.15s',
+                    }}
+                  >
+                    <FormattedMessage id="task.abort" />
+                  </button>
                 )}
-                {(task.status === 'completed' || task.status === 'failed' || task.status === 'rejected' || task.status === 'awaiting_review') && (
-                  <button onClick={() => onDelete(task.id)} style={deleteBtnStyle} title="Delete"><FormattedMessage id="task.delete" /></button>
-                )}
+                <button
+                  onClick={() => handleDeleteClick(task.id)}
+                  onMouseEnter={() => setHoveredBtnId(deleteHoverId(task.id))}
+                  onMouseLeave={() => setHoveredBtnId(null)}
+                  style={{
+                    ...deleteBtnStyle,
+                    marginLeft: 'auto',
+                    borderColor: hoveredBtnId === deleteHoverId(task.id) ? '#da3633' : '#30363d',
+                    transition: 'border-color 0.15s',
+                  }}
+                  title="Delete"
+                >
+                  <FormattedMessage id="task.delete" />
+                </button>
               </div>
 
               {task.dependsOn.length > 0 && (
@@ -156,14 +259,17 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
 const dispatchBtnStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#238636', color: '#fff',
   border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+  transition: 'border-color 0.15s',
 }
 
 const abortBtnStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#da3633', color: '#fff',
   border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+  transition: 'border-color 0.15s',
 }
 
 const deleteBtnStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#484f58', color: '#8b949e',
   border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+  transition: 'border-color 0.15s',
 }

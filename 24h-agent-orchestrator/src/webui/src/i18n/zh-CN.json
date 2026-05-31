@@ -102,5 +102,9 @@
   "webhook.remove": "删除",
   "webhook.empty": "未配置 Webhook。",
   "webhook.added": "Webhook 已添加！",
-  "webhook.deleted": "Webhook 已删除。"
+  "webhook.deleted": "Webhook 已删除。",
+  "dialog.confirmDelete": "确认删除该任务？",
+  "dialog.confirmDeleteRunning": "该任务正在执行中，确认停止并删除？",
+  "dialog.cancel": "取消",
+  "dialog.confirm": "确认"
 }

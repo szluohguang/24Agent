@@ -137,6 +137,12 @@ export function App() {
         setHealthStale(false)
         break
       }
+      case 'task-deleted': {
+        const msg = lastMessage as { type: 'task-deleted'; taskId: string }
+        setTasks((prev) => prev.filter((t) => t.id !== msg.taskId))
+        setSelectedTaskId((prev) => prev === msg.taskId ? undefined : prev)
+        break
+      }
     }
   }, [lastMessage, applyState])
 

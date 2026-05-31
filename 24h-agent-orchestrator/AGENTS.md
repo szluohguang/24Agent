@@ -1,59 +1,5 @@
 # 24h Agent Orchestrator — AI 知识库
 
-## 项目概述
-
-基于 opencode ACP 协议的 24/7 自主 Agent 编排系统。从目标定义 → 任务分解 → 子 Agent 分发 → 实时观测 → 结果评估的完整自动化闭环。
-
-核心能力：ACP 子 Agent 管理、SSE 实时事件流、三层权限控制（trusted/safe/strict）、预算控制、WebUI 可视化。
-
-## 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 运行时 | Node.js + TypeScript (ESNext) |
-| HTTP/WS | Fastify + @fastify/websocket |
-| SDK | @opencode-ai/sdk (v2) |
-| 前端 | React 19 + Vite 6 |
-| 测试 | vitest + Playwright |
-
-## 目录结构
-
-```
-24h-agent-orchestrator/
-├── src/
-│   ├── index.ts                  # 入口
-│   ├── orchestrator/             # 编排核心
-│   │   ├── core.ts, acp-manager.ts, types.ts
-│   ├── server/                   # HTTP/WS 服务
-│   │   ├── http.ts, websocket.ts, api.ts
-│   ├── observer/                 # 观测层
-│   │   ├── event-stream.ts, evaluator.ts
-│   └── webui/                    # React 前端
-├── openspec/changes/             # OpenSpec 规划产物
-├── superpowers/                  # 执行报告/日志
-│   ├── execution-logs/
-│   └── execution-reports/
-```
-
-## 核心架构
-
-- **Orchestrator** (`core.ts`): 任务管理（add/dispatch/abort）、Agent 状态追踪、SSE 事件驱动、自动重试、预算与并行控制
-- **ACP Manager** (`acp-manager.ts`): 封装 SDK 调用（session create/prompt/messages/diff/abort），注入权限规则
-- **Observer** (`event-stream.ts`, `evaluator.ts`): 全局 SSE 订阅按事件类型路由，idle 后拉取消息+diff 评估结果
-- **Server** (`http.ts`, `websocket.ts`, `api.ts`): Fastify + WebSocket + REST API，广播回调自动推送到 WebUI
-- **WebUI**: React SPA，任务树 + 流式控制台 + 时间线 + 控制栏，国际化中英文支持
-
-## 开发模式
-
-```bash
-npm run dev        # tsx watch src/index.ts
-npm run build      # tsc && vite build src/webui
-npm run start      # node dist/index.js
-npm run typecheck  # tsc --noEmit
-npm run test       # vitest run
-npm run test:e2e   # playwright test (需先 build)
-```
-
 ## 约定与规范
 
 ### 规则 1：中文优先
@@ -63,7 +9,7 @@ npm run test:e2e   # playwright test (需先 build)
 ### 规则 2：研发流程：
 - **类型判断**：
 1、如果是新需求，则走新需求流程，比如：新需求：添加工具栏 or 新需求：xxx
-2、如果是bug修改，则走 bug 修改流程，比如：bug修改：修复 xxx
+2、如果是bug修改，则走 bug 修改流程，比如：bug修复，修复 xxx
 
 #### 新需求流程：
 步骤 0：加载 skill("using-superpowers")，声明进入实施工作流；
@@ -73,7 +19,11 @@ npm run test:e2e   # playwright test (需先 build)
 步骤 4: 读取 openspec tasks.md / design.md / proposal.md；
 步骤 5: 为每个产生代码的 task 必须按以下 micro-cycle 执行：
  subagent-driven-development → 测试驱动开发
-    │    ├── 实现子 agent (实现 + 测试 + 提交 + 自审)
+    │    ├── 创建子 agent (实现 + 测试 + 提交 + 自审)
+    │    ├── 测试用例编写和测试代码编写
+    │    ├── 根据任务描述实现代码
+    │    ├── 测试用例和测试代码验证
+    │    ├── 确认测试完全通过，则进行继续，否则修正代码错误    
     │    ├── 规范审查 (代码是否符合 spec)
     │    └── 代码质量审查 (代码质量)
     │
@@ -99,7 +49,7 @@ systematic-debugging
     ├── Phase 1: 根因调查
     ├── Phase 2: 模式分析
     ├── Phase 3: 假设与验证
-    └── Phase 4: 实施 (创建测试 → 修复 → 验证)
+    └── Phase 4: 实施 (创建测试用例和测试代码 → 修复 → 验证)
     │
     ▼
 verification-before-completion → 提交 + 推送
@@ -153,3 +103,58 @@ verification-before-completion → finishing-a-development-branch
 - **结构**：模块化，独立文件，无全局变量污染
 - **测试**：单元/集成/E2E 测试优先级高于文档
 - **产物目录**：openspec 规划 → `openspec/changes/`，superpowers 执行 → `superpowers/`
+
+
+## 项目概述
+
+基于 opencode ACP 协议的 24/7 自主 Agent 编排系统。从目标定义 → 任务分解 → 子 Agent 分发 → 实时观测 → 结果评估的完整自动化闭环。
+
+核心能力：ACP 子 Agent 管理、SSE 实时事件流、三层权限控制（trusted/safe/strict）、预算控制、WebUI 可视化。
+
+## 技术栈
+
+| 层 | 技术 |
+|---|---|
+| 运行时 | Node.js + TypeScript (ESNext) |
+| HTTP/WS | Fastify + @fastify/websocket |
+| SDK | @opencode-ai/sdk (v2) |
+| 前端 | React 19 + Vite 6 |
+| 测试 | vitest + Playwright |
+
+## 目录结构
+
+```
+24h-agent-orchestrator/
+├── src/
+│   ├── index.ts                  # 入口
+│   ├── orchestrator/             # 编排核心
+│   │   ├── core.ts, acp-manager.ts, types.ts
+│   ├── server/                   # HTTP/WS 服务
+│   │   ├── http.ts, websocket.ts, api.ts
+│   ├── observer/                 # 观测层
+│   │   ├── event-stream.ts, evaluator.ts
+│   └── webui/                    # React 前端
+├── openspec/changes/             # OpenSpec 规划产物
+├── superpowers/                  # 执行报告/日志
+│   ├── execution-logs/
+│   └── execution-reports/
+```
+
+## 核心架构
+
+- **Orchestrator** (`core.ts`): 任务管理（add/dispatch/abort）、Agent 状态追踪、SSE 事件驱动、自动重试、预算与并行控制
+- **ACP Manager** (`acp-manager.ts`): 封装 SDK 调用（session create/prompt/messages/diff/abort），注入权限规则
+- **Observer** (`event-stream.ts`, `evaluator.ts`): 全局 SSE 订阅按事件类型路由，idle 后拉取消息+diff 评估结果
+- **Server** (`http.ts`, `websocket.ts`, `api.ts`): Fastify + WebSocket + REST API，广播回调自动推送到 WebUI
+- **WebUI**: React SPA，任务树 + 流式控制台 + 时间线 + 控制栏，国际化中英文支持
+
+## 开发模式
+
+```bash
+npm run dev        # tsx watch src/index.ts
+npm run build      # tsc && vite build src/webui
+npm run start      # node dist/index.js
+npm run typecheck  # tsc --noEmit
+npm run test       # vitest run
+npm run test:e2e   # playwright test (需先 build)
+```
