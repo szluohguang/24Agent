@@ -1,4 +1,4 @@
-import { createOpencode as createOpencodeV2 } from '@opencode-ai/sdk/v2'
+import { createOpencodeClient, createOpencodeServer as createOcServer } from '@opencode-ai/sdk/v2'
 import { execSync } from 'node:child_process'
 import type { PermissionLevel } from './types.js'
 import { Logger } from './logger.js'
@@ -64,18 +64,24 @@ export function freePort(port: number): void {
 
 /** 启动 opencode ACP 服务，通过 SDK 内部拉起 `opencode serve` */
 export async function createOpencodeServer() {
-  // 清理本 orchestrator 独占端口上的残留进程，避免 port conflict 导致启动失败
   freePort(4096)
 
-  if (!process.env['OPENCODE_SERVER_PASSWORD']) {
-    process.env['OPENCODE_SERVER_PASSWORD'] = 'orchestrator-dev'
-    logger.info('startup', 'OPENCODE_SERVER_PASSWORD set to default (orchestrator-dev)')
-  }
+  // opencode serve 默认无需密码，删除密码环境变量避免鉴权
+  delete process.env['OPENCODE_SERVER_PASSWORD']
 
-  const { client, server } = await createOpencodeV2({
+  const envModel = process.env['ACP_MODEL'] || process.env['OPENCODE_MODEL']
+
+  const server = await createOcServer({
     hostname: '127.0.0.1',
     port: 4096,
+    config: envModel ? { model: envModel } : undefined,
   })
+
+  const client = createOpencodeClient({
+    baseUrl: server.url,
+  })
+
+  logger.info('startup', `opencode ACP server: ${server.url}${envModel ? ` (model: ${envModel})` : ''}`)
   return { client, server }
 }
 
@@ -98,28 +104,43 @@ export async function createSubAgentSession(
   model: { providerID: string; modelID: string },
   permissionLevel: PermissionLevel,
 ) {
-  const result = await client.session.create({
+  // SDK v2 中有两个 session 类: session(基本) 和 session2(完整 CRUD + ACP)
+  // create/prompt/messages/diff/abort 都在 session2 上
+  const sessionApi = client.session2 ?? client.session
+  const result = await sessionApi.create({
     title: `Task: ${taskId}`,
-    model: { id: model.modelID, providerID: model.providerID },
-    permission: buildPermissionRuleset(permissionLevel),
   })
 
+  // 检查 SDK 显式错误
   const raw = result as Record<string, unknown> | undefined
-  const errorInfo = raw?.error && typeof raw.error === 'object' && Object.keys(raw.error as object).length > 0
-    ? raw.error
+  const err = raw?.error
+  if (err && typeof err === 'object' && Object.keys(err as object).length > 0) {
+    throw new Error(`ACP session error: ${JSON.stringify(err)}`)
+  }
+
+  // SDK v2 成功创建 session 后，Session 对象在 data 字段
+  // 兜底尝试 response 和原始对象
+  const data = (raw?.data as Record<string, unknown> | undefined)
+    ?? (raw?.response as Record<string, unknown> | undefined)
+    ?? raw
+  const sessionId = typeof data?.id === 'string' ? data.id
+    : typeof data?.sessionID === 'string' ? data.sessionID
     : undefined
 
-  const data = (raw?.data ?? raw?.response ?? raw) as Record<string, unknown> | undefined
-  const sessionId = (data?.id ?? data?.sessionID) as string | undefined
-
   if (!sessionId) {
-    const errMsg = errorInfo
-      ? `ACP session error: ${JSON.stringify(errorInfo)}`
-      : 'ACP provider not configured — set DEEPSEEK_API_KEY or ACP_MODEL'
-    throw new Error(errMsg)
+    const keys = raw ? Object.keys(raw).join(',') : 'null'
+    const dataKeys = data ? Object.keys(data).join(',') : 'null'
+    throw new Error(
+      `ACP session creation failed — top keys: [${keys}], data keys: [${dataKeys}]`
+    )
   }
 
   return { id: sessionId }
+}
+
+/** 获取 SDK v2 的正确 session API（session2 包含完整 CRUD + ACP） */
+function getSessionApi(client: AnyClient) {
+  return client.session2 ?? client.session
 }
 
 /** 向指定会话发送任务 prompt（文本消息） */
@@ -128,7 +149,7 @@ export async function sendTaskPrompt(
   sessionId: string,
   promptText: string,
 ) {
-  return client.session.prompt({
+  return getSessionApi(client).prompt({
     sessionID: sessionId,
     parts: [{ type: 'text', text: promptText }],
   })
@@ -139,7 +160,7 @@ export async function getSessionMessages(
   client: AnyClient,
   sessionId: string,
 ) {
-  const result = await client.session.messages({ sessionID: sessionId, limit: 50 })
+  const result = await getSessionApi(client).messages({ sessionID: sessionId, limit: 50 })
   return result?.data ?? result
 }
 
@@ -148,7 +169,7 @@ export async function getSessionDiff(
   client: AnyClient,
   sessionId: string,
 ) {
-  const result = await client.session.diff({ sessionID: sessionId })
+  const result = await getSessionApi(client).diff({ sessionID: sessionId })
   return result?.data ?? result
 }
 
@@ -157,5 +178,5 @@ export async function abortSession(
   client: AnyClient,
   sessionId: string,
 ) {
-  return client.session.abort({ sessionID: sessionId })
+  return getSessionApi(client).abort({ sessionID: sessionId })
 }

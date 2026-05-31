@@ -46,14 +46,17 @@ export function createMockClient(): MockClient {
   sessionDiff.mockResolvedValue({ data: [] })
   sessionAbort.mockResolvedValue(undefined)
 
+  const sdkSession = {
+    create: sessionCreate as unknown as MockInstance,
+    prompt: sessionPrompt as unknown as MockInstance,
+    messages: sessionMessages as unknown as MockInstance,
+    diff: sessionDiff as unknown as MockInstance,
+    abort: sessionAbort as unknown as MockInstance,
+  }
+
   const client = {
-    session: {
-      create: sessionCreate as unknown as MockInstance,
-      prompt: sessionPrompt as unknown as MockInstance,
-      messages: sessionMessages as unknown as MockInstance,
-      diff: sessionDiff as unknown as MockInstance,
-      abort: sessionAbort as unknown as MockInstance,
-    },
+    session: sdkSession,
+    session2: sdkSession,
     global: {
       event: globalEvent as unknown as MockInstance,
     },

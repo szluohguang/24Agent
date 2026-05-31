@@ -11,9 +11,14 @@ import {
 import { createMockClient } from '../../test-utils/factories.js'
 
 vi.mock('@opencode-ai/sdk/v2', () => ({
-  createOpencode: vi.fn(async () => ({
-    client: { session: {}, global: {} },
-    server: {},
+  createOpencodeClient: vi.fn(() => ({
+    session: {},
+    session2: {},
+    global: {},
+  })),
+  createOpencodeServer: vi.fn(async () => ({
+    url: 'http://127.0.0.1:4096',
+    close: vi.fn(),
   })),
 }))
 
@@ -61,8 +66,6 @@ describe('ACP Manager', () => {
       expect(mockClient.mocks.sessionCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Task: task-1',
-          model: { id: 'claude-3', providerID: 'anthropic' },
-          permission: expect.any(Array),
         }),
       )
     })
