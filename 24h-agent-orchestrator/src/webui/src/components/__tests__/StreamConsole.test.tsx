@@ -12,7 +12,7 @@ function renderWithIntl(ui: React.ReactElement) {
 
 describe('StreamConsole', () => {
   it('shows empty state when no sessions', () => {
-    renderWithIntl(<StreamConsole sessions={{}} />)
+    renderWithIntl(<StreamConsole sessions={{}} sessionChunks={{}} />)
     expect(screen.getByText(/stream\.noSessions/)).toBeInTheDocument()
   })
 
@@ -20,7 +20,7 @@ describe('StreamConsole', () => {
     const sessions = {
       'sess-001': { taskId: 'task-1', stream: ['delta1', 'delta2'] },
     }
-    renderWithIntl(<StreamConsole sessions={sessions} />)
+    renderWithIntl(<StreamConsole sessions={sessions} sessionChunks={{}} />)
     expect(screen.getByText(/sess-001/)).toBeInTheDocument()
     expect(screen.getByText(/task-1/)).toBeInTheDocument()
     expect(screen.getByText(/delta1/)).toBeInTheDocument()
@@ -32,7 +32,7 @@ describe('StreamConsole', () => {
       'sess-a': { taskId: 'task-1', stream: ['a'] },
       'sess-b': { taskId: 'task-2', stream: ['b'] },
     }
-    renderWithIntl(<StreamConsole sessions={sessions} />)
+    renderWithIntl(<StreamConsole sessions={sessions} sessionChunks={{}} />)
     expect(screen.getByText(/task-1/)).toBeInTheDocument()
     expect(screen.getByText(/task-2/)).toBeInTheDocument()
   })
@@ -42,7 +42,7 @@ describe('StreamConsole', () => {
       'sess-a': { taskId: 'task-1', stream: ['alpha'] },
       'sess-b': { taskId: 'task-2', stream: ['beta'] },
     }
-    renderWithIntl(<StreamConsole sessions={sessions} activeSessionId="sess-a" />)
+    renderWithIntl(<StreamConsole sessions={sessions} sessionChunks={{}} activeSessionId="sess-a" />)
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.queryByText('beta')).not.toBeInTheDocument()
   })

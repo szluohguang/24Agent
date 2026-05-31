@@ -2,8 +2,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { subscribeGlobalEvents } from '../event-stream.js'
 import type { EventHandlers } from '../event-stream.js'
 
-function makeEvent(payload: Record<string, unknown>) {
-  return { payload }
+// SDK v2 事件格式: { payload: { id, type, properties: { sessionID, ... } } }
+function makeEvent(props: Record<string, unknown>, type?: string) {
+  return {
+    payload: {
+      id: crypto.randomUUID(),
+      type: type || (props.type as string) || 'unknown',
+      properties: {
+        sessionID: props.sessionID || '',
+        ...props,
+      },
+    },
+  }
 }
 
 describe('subscribeGlobalEvents()', () => {
@@ -197,7 +207,7 @@ describe('subscribeGlobalEvents()', () => {
 
     await subscribeGlobalEvents(mockClient as never, handlers)
 
-    expect(handlers.onSessionError).toHaveBeenCalledWith('sess-1', errorPayload)
+    expect(handlers.onSessionError).toHaveBeenCalledWith('sess-1', expect.objectContaining({ type: 'session.error' }))
   })
 
   it('should process session.next.step.failed as error', async () => {

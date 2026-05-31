@@ -128,5 +128,8 @@ export function createBroadcastCallbacks(getState?: () => unknown) {
     onAgentStateChange: (sessionId: string, state: Partial<AgentState>) => {
       broadcastToClients({ type: 'agent-state', sessionId, state })
     },
+    onChunk: (sessionId: string, chunk: { type: string; content: string; toolName?: string }) => {
+      broadcastToClients({ type: 'chunk-delta', sessionId, chunk })
+    },
   }
 }

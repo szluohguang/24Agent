@@ -15,6 +15,8 @@ export interface EventHandlers {
   onTimeline?: (entry: TimelineEntry) => void
   onAgentStateChange?: (sessionId: string, state: Partial<AgentState>) => void
   onAnyEvent?: (sessionId: string) => void
+  /** 结构化消息块 — 用于对话式 UI 区分思考/工具/文本 */
+  onChunk?: (sessionId: string, chunk: { type: string; content: string; toolName?: string }) => void
 }
 
 /**
@@ -58,9 +60,14 @@ export async function subscribeGlobalEvents(
 
       switch (type) {
         // SDK v2: 流式文本增量
-        case 'session.next.text.delta':
-          handlers.onTextDelta?.(sessionId, (props?.delta as string) || '')
+        case 'session.next.text.delta': {
+          const delta = (props?.delta as string) || ''
+          if (delta) {
+            handlers.onTextDelta?.(sessionId, delta)
+            handlers.onChunk?.(sessionId, { type: 'text', content: delta })
+          }
           break
+        }
 
         // SDK v2: 整个消息部分更新（text / tool / shell 等）
         case 'message.part.updated': {
@@ -68,11 +75,30 @@ export async function subscribeGlobalEvents(
           const partType = part?.type as string | undefined
           if (partType === 'text') {
             const text = (part?.text as string) || ''
-            if (text) handlers.onTextDelta?.(sessionId, text)
+            if (text) {
+              handlers.onTextDelta?.(sessionId, text)
+              handlers.onChunk?.(sessionId, { type: 'text', content: text })
+            }
+          } else if (partType === 'reasoning') {
+            const text = (part?.text as string) || ''
+            if (text) handlers.onChunk?.(sessionId, { type: 'thinking', content: text })
           } else if (partType === 'tool_use' || partType === 'tool_call') {
-            handlers.onToolCalled?.(sessionId, (part?.name as string) || '', part?.input)
+            handlers.onChunk?.(sessionId, {
+              type: 'tool_call',
+              content: JSON.stringify(part?.input),
+              toolName: (part?.name as string) || '',
+            })
+          } else if (partType === 'tool_result') {
+            handlers.onChunk?.(sessionId, {
+              type: 'tool_result',
+              content: (part?.content as string) || (part?.text as string) || '',
+            })
           } else if (partType === 'shell' || partType === 'bash') {
-            handlers.onShellStarted?.(sessionId, (part?.command as string) || '')
+            handlers.onChunk?.(sessionId, {
+              type: 'tool_call',
+              content: (part?.command as string) || '',
+              toolName: 'bash',
+            })
           }
           break
         }
@@ -80,6 +106,11 @@ export async function subscribeGlobalEvents(
         // SDK v2: 工具调用
         case 'session.next.tool.called':
           handlers.onToolCalled?.(sessionId, (props?.tool as string) || '', props?.input)
+          handlers.onChunk?.(sessionId, {
+            type: 'tool_call',
+            content: typeof props?.input === 'string' ? props.input : JSON.stringify(props?.input),
+            toolName: (props?.tool as string) || '',
+          })
           handlers.onTimeline?.({
             id: crypto.randomUUID(),
             time: Date.now(),
@@ -93,6 +124,11 @@ export async function subscribeGlobalEvents(
         // SDK v2: Shell 命令开始
         case 'session.next.shell.started':
           handlers.onShellStarted?.(sessionId, (props?.command as string) || '')
+          handlers.onChunk?.(sessionId, {
+            type: 'tool_call',
+            content: (props?.command as string) || '',
+            toolName: 'bash',
+          })
           handlers.onTimeline?.({
             id: crypto.randomUUID(),
             time: Date.now(),
@@ -106,6 +142,10 @@ export async function subscribeGlobalEvents(
         // SDK v2: Shell 命令结束
         case 'session.next.shell.ended':
           handlers.onShellEnded?.(sessionId, (props?.output as string) || '')
+          handlers.onChunk?.(sessionId, {
+            type: 'tool_result',
+            content: (props?.output as string) || '',
+          })
           break
 
         // SDK v2: Session 空闲

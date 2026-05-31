@@ -106,5 +106,10 @@
   "dialog.confirmDelete": "Are you sure you want to delete this task?",
   "dialog.confirmDeleteRunning": "This task is running. Stop and delete it?",
   "dialog.cancel": "Cancel",
-  "dialog.confirm": "Confirm"
+  "dialog.confirm": "Confirm",
+  "chunk.thinking": "Thinking",
+  "chunk.toolRunning": "Running...",
+  "chunk.toolDone": "Done",
+  "chunk.assistant": "Assistant",
+  "chunk.you": "You"
 }

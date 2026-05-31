@@ -13,10 +13,16 @@ import type { TaskNode, TimelineEntryData } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
+export interface ChunkData {
+  type: string
+  content: string
+  toolName?: string
+}
+
 export function App() {
   const [sessions, setSessions] = useState<Record<string, { taskId: string; stream: string[] }>>({})
+  const [sessionChunks, setSessionChunks] = useState<Record<string, { taskId: string; chunks: ChunkData[] }>>({})
   const { connected, lastMessage, send, isReconnecting, reconnectAttempts } = useWebSocket(WS_URL, {
-    // 直接从 WebSocket onmessage 更新 sessions，避免 setLastMessage 批处理丢包
     onStreamDelta: (sessionId, delta) => {
       setSessions((prev) => {
         const existing = prev[sessionId]
@@ -144,6 +150,25 @@ export function App() {
         setSelectedTaskId((prev) => prev === msg.taskId ? undefined : prev)
         break
       }
+      case 'chunk-delta': {
+        const msg = lastMessage as { type: 'chunk-delta'; sessionId: string; chunk: ChunkData }
+        if (typeof msg.sessionId !== 'string') break
+        setSessionChunks((prev) => {
+          const existing = prev[msg.sessionId]
+          const c = msg.chunk
+          if (!existing) {
+            return { ...prev, [msg.sessionId]: { taskId: '', chunks: [c] } }
+          }
+          const last = existing.chunks[existing.chunks.length - 1]
+          if (last && last.type === c.type && c.type !== 'tool_call' && c.type !== 'tool_result') {
+            existing.chunks[existing.chunks.length - 1] = { ...last, content: last.content + c.content }
+          } else {
+            existing.chunks.push(c)
+          }
+          return { ...prev, [msg.sessionId]: { ...existing, chunks: [...existing.chunks] } }
+        })
+        break
+      }
     }
   }, [lastMessage, applyState])
 
@@ -180,7 +205,15 @@ export function App() {
   const handleFollowUpSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!followUpInput.trim() || !activeSessionId) return
-    send({ type: 'continue-prompt', sessionId: activeSessionId, prompt: followUpInput.trim() })
+    const prompt = followUpInput.trim()
+    send({ type: 'continue-prompt', sessionId: activeSessionId, prompt })
+    setSessionChunks((prev) => {
+      const existing = prev[activeSessionId]
+      if (!existing) {
+        return { ...prev, [activeSessionId]: { taskId: '', chunks: [{ type: 'user', content: prompt }] } }
+      }
+      return { ...prev, [activeSessionId]: { ...existing, chunks: [...existing.chunks, { type: 'user', content: prompt }] } }
+    })
     setFollowUpInput('')
   }
 
@@ -352,7 +385,7 @@ export function App() {
             )}
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <StreamConsole sessions={sessions} activeSessionId={activeSessionId} />
+            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} />
           </div>
           {/* Review panel for awaiting_review tasks */}
           {selectedTask?.status === 'awaiting_review' && (
@@ -362,7 +395,7 @@ export function App() {
               onReject={handleReject}
             />
           )}
-          {/* Follow-up prompt input for selected running task */}
+          {/* Follow-up prompt input — 选中有 session 的任务时显示 */}
           {activeSessionId && (
             <form onSubmit={handleFollowUpSubmit} style={{
               display: 'flex', gap: 8, padding: '8px 12px',

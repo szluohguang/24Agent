@@ -19,6 +19,7 @@ export interface OrchestratorCallbacks {
   onTimeline: (entry: TimelineEntry) => void
   onStreamDelta: (sessionId: string, delta: string) => void
   onAgentStateChange: (sessionId: string, state: Partial<AgentState>) => void
+  onChunk?: (sessionId: string, chunk: { type: string; content: string; toolName?: string }) => void
 }
 
 /**
@@ -155,6 +156,11 @@ export class Orchestrator {
       onAnyEvent: (sessionId) => {
         if (sessionId) this.healthMonitor.notifySessionEvent(sessionId)
         this.healthMonitor.onSseEvent()
+      },
+      onChunk: (sessionId, chunk) => {
+        if (this.callbacks.onChunk) {
+          this.callbacks.onChunk(sessionId, chunk)
+        }
       },
     }
   }

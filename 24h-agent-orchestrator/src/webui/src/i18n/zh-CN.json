@@ -106,5 +106,10 @@
   "dialog.confirmDelete": "确认删除该任务？",
   "dialog.confirmDeleteRunning": "该任务正在执行中，确认停止并删除？",
   "dialog.cancel": "取消",
-  "dialog.confirm": "确认"
+  "dialog.confirm": "确认",
+  "chunk.thinking": "思考过程",
+  "chunk.toolRunning": "执行中...",
+  "chunk.toolDone": "执行完成",
+  "chunk.assistant": "AI 回复",
+  "chunk.you": "你"
 }
