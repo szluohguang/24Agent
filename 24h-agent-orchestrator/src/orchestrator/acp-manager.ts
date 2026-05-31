@@ -104,8 +104,22 @@ export async function createSubAgentSession(
     permission: buildPermissionRuleset(permissionLevel),
   })
 
-  const data = result?.data ?? result
-  return data as { id: string }
+  const raw = result as Record<string, unknown> | undefined
+  const errorInfo = raw?.error && typeof raw.error === 'object' && Object.keys(raw.error as object).length > 0
+    ? raw.error
+    : undefined
+
+  const data = (raw?.data ?? raw?.response ?? raw) as Record<string, unknown> | undefined
+  const sessionId = (data?.id ?? data?.sessionID) as string | undefined
+
+  if (!sessionId) {
+    const errMsg = errorInfo
+      ? `ACP session error: ${JSON.stringify(errorInfo)}`
+      : 'ACP provider not configured — set DEEPSEEK_API_KEY or ACP_MODEL'
+    throw new Error(errMsg)
+  }
+
+  return { id: sessionId }
 }
 
 /** 向指定会话发送任务 prompt（文本消息） */

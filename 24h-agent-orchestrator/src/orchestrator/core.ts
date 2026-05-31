@@ -294,20 +294,24 @@ export class Orchestrator {
       ? { providerID: envModel.split('/')[0]!, modelID: envModel.split('/')[1]! }
       : { providerID: 'deepseek' as const, modelID: 'deepseek-chat' }
 
-    const sessionData = await createSubAgentSession(
-      this.client,
-      taskId,
-      model,
-      this.permissionLevel,
-    )
-
-    if (!sessionData?.id) {
-      logger.error('task-fail', 'Session creation returned no ID', { taskId, model })
+    let sessionData: { id: string }
+    try {
+      sessionData = await createSubAgentSession(
+        this.client,
+        taskId,
+        model,
+        this.permissionLevel,
+      )
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'ACP session creation failed'
+      logger.error('task-fail', errMsg, { taskId, model })
       task.status = 'failed'
-      task.error = 'ACP session creation failed — check model/api key config'
+      task.error = errMsg
       this.store.updateTask(task)
       this.scheduler.updateTaskStatus(taskId, 'failed')
       this.scheduler.onSessionEnded()
+      this.addTimeline('system', 'system', 'max-retries', `Session creation failed: ${task.description}`)
+      this.callbacks.onStateChange()
       return
     }
 
