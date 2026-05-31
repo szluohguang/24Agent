@@ -69,7 +69,7 @@ npm run test:e2e   # playwright test (需先 build)
 步骤 0：加载 skill("using-superpowers")，声明进入实施工作流；
 步骤 1: 需求规划 → OpenSpec 技能（`/opsx-propose` 创建 proposal/design/tasks）；
 步骤 2: 确认关卡：tasks 创建后必须用 Question 工具展示给用户，确认后才能继续；
-步骤 3: 代码实现+验证归档** → Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）；
+步骤 3: 代码实现+验证归档** → Superpowers 技能（通过 opencode skill 系统加载）；
 步骤 4: 读取 openspec tasks.md / design.md / proposal.md；
 步骤 5: 为每个产生代码的 task 必须按以下 micro-cycle 执行：
  subagent-driven-development → 测试驱动开发
@@ -90,8 +90,8 @@ finishing-a-development-branch → 合并/PR/保留/放弃
 标记 task 为 [x] 
 
 #### Bug 修改流程：
-- **bug规划** 使用Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）的 skill('systematic-debugging') 进行bug修复；
-- **代码实现+验证归档** → Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）
+- **bug规划** 使用 Superpowers skill('systematic-debugging') 进行 bug 修复；
+- **代码实现+验证归档** → Superpowers 技能
 遇到 Bug / 测试失败
     │
     ▼
@@ -105,7 +105,7 @@ systematic-debugging
 verification-before-completion → 提交 + 推送
 
 ### 规则 3：Code Review 流程：
-使用Superpowers 技能（插件路径 `D:/AIGPT/superpowers`），在开发完成后
+使用 Superpowers 技能，在开发完成后
 步骤 1: 创建 Code Review 需求
     │
     ▼

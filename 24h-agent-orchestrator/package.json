@@ -15,6 +15,7 @@
     "db:migrate": "echo 'No migrations yet. Tables are auto-created on startup.'"
   },
   "dependencies": {
+    "@fastify/static": "^9.1.3",
     "@fastify/websocket": "^11.0.0",
     "@opencode-ai/sdk": "^1.15.10",
     "better-sqlite3": "^12.10.0",
@@ -27,7 +28,6 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@fastify/static": "^9.1.3",
     "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

@@ -191,9 +191,12 @@ cd src/webui && npx vite
 ## 路线图
 
 - **Phase 1** ✅ 项目骨架、SDK 集成、WebUI 基础、单任务分发
-- **Phase 2** 🔜 DAG 调度器、OpenSpec 集成、结果评估
-- **Phase 3** 🔜 弹性能力（重试、超时、预算、持久化）
-- **Phase 4** 🔜 完整人工交互、历史记录、通知
+- **Phase 2** ✅ DAG 调度器、OpenSpec 集成、结果评估、TDD 测试体系
+- **Phase 3** ✅ 弹性能力（重试、超时、预算、持久化、健康监控、自动恢复）
+- **Phase 4 — 人机协作** ✅ 人工审核工作流、中英文国际化、WebUI 全面升级
+- **Phase 4 — 历史记录** ✅ 完整 SQLite 持久化审计日志、时间线可视化（待 WebUI 历史页面）
+- **Phase 4 — 通知系统** 🔜 Webhook 通知、任务状态回调
+- **Future** 🔜 用户认证、多租户、生产部署配置（Docker）
 
 ## 许可
 

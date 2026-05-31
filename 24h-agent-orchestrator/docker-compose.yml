@@ -1,0 +1,15 @@
+services:
+  orchestrator:
+    build: .
+    container_name: 24h-agent-orchestrator
+    ports:
+      - "3000:3000"
+    volumes:
+      - orchestrator-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/app/data/orchestrator.db
+    restart: unless-stopped
+
+volumes:
+  orchestrator-data:

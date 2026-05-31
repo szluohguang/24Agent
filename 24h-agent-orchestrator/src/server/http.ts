@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import fastifyWebsocket from '@fastify/websocket'
 import fastifyStatic from '@fastify/static'
 import path from 'node:path'
+import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { registerApiRoutes } from './api.js'
 import { registerWebSocket } from './websocket.js'
@@ -10,7 +11,11 @@ import { Logger } from '../orchestrator/logger.js'
 
 const logger = Logger.getInstance()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const webuiDist = path.resolve(__dirname, '..', 'webui', 'dist')
+// 生产: dist/server/../webui/dist = dist/webui/dist (手动复制)
+// 开发: src/server/../webui/dist = src/webui/dist (tsx 直接运行)
+const prodWebui = path.resolve(__dirname, '..', 'webui', 'dist')
+const devWebui = path.resolve(__dirname, '..', '..', 'src', 'webui', 'dist')
+const webuiDist = fs.existsSync(prodWebui) ? prodWebui : devWebui
 
 /** 创建 Fastify 服务器，注册 REST API、WebSocket 路由和静态文件服务 */
 export async function createHttpServer(orchestrator: Orchestrator) {

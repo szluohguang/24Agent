@@ -1,0 +1,14 @@
+node_modules/
+dist/
+src/webui/dist/
+.vite/
+*.db
+*.log
+.git/
+.gitignore
+AGENTS.md
+AI-TESTING-GUIDE.md
+README.md
+openspec/
+superpowers/
+orchestrator.db
