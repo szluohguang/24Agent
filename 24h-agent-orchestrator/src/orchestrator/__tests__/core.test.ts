@@ -195,7 +195,7 @@ describe('Orchestrator', () => {
       const stateAfter = orchestrator.getState()
       const task = stateAfter.tasks.find(t => t.id === id)
       expect(task!.status).toBe('completed')
-      expect(orchestrator['budgetSpent']).toBe(0.002)
+      expect(orchestrator['budgetSpent']).toBe(0.0002)
     })
 
     it('should retry on session error', async () => {
@@ -237,7 +237,7 @@ describe('Orchestrator', () => {
       expect(task.status).toBe('awaiting_review')
       expect(task.result).toBeDefined()
       expect(task.result!.summary).toBe('Done')
-      expect(task.result!.cost).toBe(0.003)
+      expect(task.result!.cost).toBeCloseTo(0.0002, 6)
     })
 
     it('should mark task as completed for safe mode after session idle', async () => {

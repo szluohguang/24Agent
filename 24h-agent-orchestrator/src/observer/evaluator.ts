@@ -40,6 +40,17 @@ export async function evaluateTaskCompletion(
     cost = lastMessage.cost
   }
 
+  const tokens = lastMessage?.tokens as { input: number; output: number } | undefined
+
+  // DeepSeek V4 Flash 定价（元/百万tokens）
+  // 缓存未命中: 输入 1元/M, 输出 2元/M
+  // 缓存命中: 输入 0.02元/M, 输出 2元/M
+  if (tokens && typeof tokens.input === 'number' && typeof tokens.output === 'number') {
+    const inputCost = (tokens.input / 1_000_000) * 1    // 未缓存
+    const outputCost = (tokens.output / 1_000_000) * 2   // 输出
+    cost = inputCost + outputCost
+  }
+
   if (diff && Array.isArray(diff)) {
     for (const d of diff) {
       if (d?.file) artifacts.push(d.file as string)
@@ -50,6 +61,6 @@ export async function evaluateTaskCompletion(
     summary,
     artifacts,
     cost,
-    tokens: lastMessage?.tokens as { input: number; output: number } | undefined,
+    tokens,
   }
 }

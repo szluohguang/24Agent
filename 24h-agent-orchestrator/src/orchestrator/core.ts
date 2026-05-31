@@ -396,7 +396,7 @@ ${feedbackContext}
         this.store.updateAgent(agent)
 
         this.addTimeline('sub', sessionId, 'awaiting-review',
-          `Task awaiting review: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+          `Task awaiting review: ${task.description} (cost: ¥${result.cost.toFixed(4)})`)
         this.notifier.notify('task.awaiting_review', { id: task.id, description: task.description, status: 'awaiting_review', result: { summary: result.summary, cost: result.cost } })
       } else {
         task.status = 'completed'
@@ -412,7 +412,7 @@ ${feedbackContext}
         logger.info('task-complete', `Task completed: ${task.description}`,
           { taskId: agent.taskId, cost: result.cost, artifacts: result.artifacts })
         this.addTimeline('sub', sessionId, 'complete',
-          `Task completed: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+          `Task completed: ${task.description} (cost: ¥${result.cost.toFixed(4)})`)
         this.notifier.notify('task.completed', { id: task.id, description: task.description, status: 'completed', result: { summary: result.summary, cost: result.cost } })
       }
 

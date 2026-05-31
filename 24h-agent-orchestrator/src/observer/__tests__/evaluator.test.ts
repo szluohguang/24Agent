@@ -23,7 +23,7 @@ describe('evaluateTaskCompletion()', () => {
     const result = await evaluateTaskCompletion(mockClient.client as never, 'session-1')
 
     expect(result.summary).toBe('Implemented feature X')
-    expect(result.cost).toBe(0.005)
+    expect(result.cost).toBeCloseTo(0.0005, 6)
     expect(result.tokens).toEqual({ input: 200, output: 150 })
     expect(result.artifacts).toEqual(['src/feature.ts'])
   })

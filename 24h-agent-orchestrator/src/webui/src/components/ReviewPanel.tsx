@@ -53,6 +53,14 @@ export function ReviewPanel({ task, onApprove, onReject }: ReviewPanelProps) {
               </span>
             )}
           </div>
+          {result.tokens && (
+            <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4 }}>
+              <FormattedMessage id="review.priceCalc" values={{
+                inM: (result.tokens.input / 1_000_000).toFixed(4),
+                outM: (result.tokens.output / 1_000_000).toFixed(4),
+              }} />
+            </div>
+          )}
 
           {result.artifacts.length > 0 && (
             <div>
