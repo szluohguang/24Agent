@@ -11,9 +11,9 @@ function renderWithIntl(ui: React.ReactElement) {
 }
 
 describe('StreamConsole', () => {
-  it('shows empty state when no sessions', () => {
+  it('shows select task prompt when no sessions and no selected task', () => {
     renderWithIntl(<StreamConsole sessions={{}} sessionChunks={{}} />)
-    expect(screen.getByText(/stream\.noSessions/)).toBeInTheDocument()
+    expect(screen.getByText(/stream\.selectTask/)).toBeInTheDocument()
   })
 
   it('renders session with chunks', () => {

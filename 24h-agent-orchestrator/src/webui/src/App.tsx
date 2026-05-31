@@ -438,7 +438,7 @@ export function App() {
             )}
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} lastUserPrompt={lastUserPrompt} />
+            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} lastUserPrompt={lastUserPrompt} selectedTaskId={selectedTaskId} />
           </div>
           {/* Review panel for awaiting_review tasks */}
           {selectedTask?.status === 'awaiting_review' && (

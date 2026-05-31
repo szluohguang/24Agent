@@ -7,6 +7,7 @@ interface StreamConsoleProps {
   sessionChunks: Record<string, { taskId: string; chunks: ChunkData[] }>
   activeSessionId?: string
   lastUserPrompt?: string
+  selectedTaskId?: string
 }
 
 const CHUNK_ICONS: Record<string, string> = {
@@ -150,20 +151,26 @@ function ChunkCard({ chunk, isLastThinking, lastUserPrompt }: { chunk: ChunkData
   )
 }
 
-export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt }: StreamConsoleProps) {
+export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt, selectedTaskId }: StreamConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sessionIds = activeSessionId
+    ? [activeSessionId]
+    : Object.keys(sessionChunks).length > 0 ? Object.keys(sessionChunks) : Object.keys(sessions)
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [sessions, sessionChunks, activeSessionId])
-
-  const sessionIds = activeSessionId
-    ? [activeSessionId]
-    : Object.keys(sessionChunks).length > 0 ? Object.keys(sessionChunks) : Object.keys(sessions)
+  }, [activeSessionId, sessionIds.length])
 
   if (sessionIds.length === 0) {
+    if (!selectedTaskId) {
+      return (
+        <div style={{ padding: 16, color: '#8b949e', fontStyle: 'italic' }}>
+          <FormattedMessage id="stream.selectTask" />
+        </div>
+      )
+    }
     return (
       <div style={{ padding: 16, color: '#8b949e', fontStyle: 'italic' }}>
         <FormattedMessage id="stream.noSessions" />
