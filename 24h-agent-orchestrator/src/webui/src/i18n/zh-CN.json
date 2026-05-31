@@ -88,5 +88,12 @@
   "review.reject": "驳回",
   "review.feedbackPlaceholder": "输入驳回理由（必填）...",
   "review.submitReject": "提交驳回",
-  "review.cancel": "取消"
+  "review.cancel": "取消",
+  "history.title": "审计历史",
+  "history.search": "搜索事件...",
+  "history.allSources": "所有来源",
+  "history.allTypes": "所有类型",
+  "history.count": "{count} 个事件",
+  "history.events": "个事件",
+  "history.empty": "无匹配事件。"
 }

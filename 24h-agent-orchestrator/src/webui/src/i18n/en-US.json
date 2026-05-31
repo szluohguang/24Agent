@@ -88,5 +88,12 @@
   "review.reject": "Reject",
   "review.feedbackPlaceholder": "Enter rejection feedback (required)...",
   "review.submitReject": "Submit Rejection",
-  "review.cancel": "Cancel"
+  "review.cancel": "Cancel",
+  "history.title": "Audit History",
+  "history.search": "Search events...",
+  "history.allSources": "All Sources",
+  "history.allTypes": "All Types",
+  "history.count": "{count} events",
+  "history.events": "events",
+  "history.empty": "No matching events."
 }

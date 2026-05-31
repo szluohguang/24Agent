@@ -7,6 +7,7 @@ import { TreeView } from './components/TreeView.js'
 import { HealthDashboard } from './components/HealthDashboard.js'
 import { ScheduleManager } from './components/ScheduleManager.js'
 import { ReviewPanel } from './components/ReviewPanel.js'
+import { HistoryPanel } from './components/HistoryPanel.js'
 import type { TaskNode, TimelineEntryData } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
@@ -35,6 +36,7 @@ export function App() {
   const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
   const [healthStale, setHealthStale] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'schedule' | 'history'>('schedule')
   const [taskInput, setTaskInput] = useState('')
   const [followUpInput, setFollowUpInput] = useState('')
 
@@ -267,8 +269,25 @@ export function App() {
                 cursor: 'pointer', fontSize: 18,
               }}>✕</button>
             </div>
-            <div style={{ padding: 8 }}>
-              <ScheduleManager />
+            <div style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
+              {(['schedule', 'history'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setSettingsTab(tab)}
+                  style={{
+                    flex: 1, padding: '8px 16px', cursor: 'pointer', fontSize: 13,
+                    background: settingsTab === tab ? '#0d1117' : 'transparent',
+                    color: settingsTab === tab ? '#c9d1d9' : '#8b949e',
+                    border: 'none', borderBottom: settingsTab === tab ? '2px solid #58a6ff' : '2px solid transparent',
+                    fontWeight: settingsTab === tab ? 600 : 400,
+                  }}
+                >
+                  {tab === 'schedule' ? <FormattedMessage id="tab.schedule" /> : <FormattedMessage id="history.title" />}
+                </button>
+              ))}
+            </div>
+            <div style={{ padding: 8, flex: 1, overflow: 'auto' }}>
+              {settingsTab === 'schedule' ? <ScheduleManager /> : <HistoryPanel entries={timelineEntries} />}
             </div>
           </div>
         </div>
