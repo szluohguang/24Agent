@@ -1,8 +1,7 @@
 @echo off
 title 24h Agent Orchestrator
 
-pushd %~dp0
-cd 24h-agent-orchestrator
+cd /d %~dp0
 if errorlevel 1 (
     echo [ERROR] Cannot find project directory
     pause

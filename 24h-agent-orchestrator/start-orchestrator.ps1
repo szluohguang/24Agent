@@ -3,8 +3,8 @@ param(
   [string]$Permission = "safe"
 )
 
-$ProjectDir = Join-Path $PSScriptRoot "24h-agent-orchestrator"
-$LogFile = Join-Path $ProjectDir "orchestrator.log"
+$ProjectDir = $PSScriptRoot
+$LogFile = Join-Path $PSScriptRoot "orchestrator.log"
 
 Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║     24h Agent Orchestrator              ║" -ForegroundColor Cyan
