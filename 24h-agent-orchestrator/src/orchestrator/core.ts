@@ -1,7 +1,7 @@
 import type { OpencodeClient } from '@opencode-ai/sdk/v2'
 import type Database from 'better-sqlite3'
 import type { TaskState, AgentState, TimelineEntry, PermissionLevel, ScheduledTask, HealthStatus, ReviewRecord } from './types.js'
-import { createSubAgentSession, sendTaskPrompt, abortSession, getSessionMessages } from './acp-manager.js'
+import { createSubAgentSession, sendTaskPrompt, abortSession } from './acp-manager.js'
 import { evaluateTaskCompletion } from '../observer/evaluator.js'
 import { subscribeGlobalEvents, type EventHandlers } from '../observer/event-stream.js'
 import { Store } from './store.js'
@@ -10,6 +10,9 @@ import { Scheduler } from './scheduler.js'
 import { Recovery } from './recovery.js'
 import { Logger } from './logger.js'
 import { Notifier, type WebhookConfig } from '../server/notifier.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
 
 const logger = Logger.getInstance()
 
@@ -269,17 +272,48 @@ export class Orchestrator {
   }
 
   async optimizeText(field: string, text: string): Promise<string> {
+    // 直接调用 LLM API，不经过 ACP session
+    let apiKey = process.env['DEEPSEEK_API_KEY'] || ''
+    if (!apiKey) {
+      try {
+        const authPath = path.join(os.homedir(), '.local', 'share', 'opencode', 'auth.json')
+        if (fs.existsSync(authPath)) {
+          const auth = JSON.parse(fs.readFileSync(authPath, 'utf8')) as Record<string, { key?: string }>
+          apiKey = auth['deepseek']?.key || ''
+        }
+      } catch { /* ignore */ }
+    }
+    if (!apiKey) throw new Error('DEEPSEEK_API_KEY not configured')
+
     const promptText = `请优化以下项目${field === 'goal' ? '目标' : '描述'}文本，使其更清晰、专业、简洁。直接返回优化后的内容，不要加任何解释。\n\n${text}`
-    const sessionData = await createSubAgentSession(this.client, 'optimize-text', { providerID: 'deepseek', modelID: 'deepseek-chat' }, 'trusted')
-    if (!sessionData?.id) throw new Error('Failed to create optimization session')
-    await sendTaskPrompt(this.client, sessionData.id, promptText)
-    const messagesData = await getSessionMessages(this.client, sessionData.id)
-    const messages = Array.isArray(messagesData) ? messagesData : (messagesData as { items?: unknown[] })?.items || []
-    const lastAssistant = [...messages].reverse().find((m: { role?: string }) => m?.role === 'assistant') as Record<string, unknown> | undefined
-    const summary = lastAssistant?.summary as Record<string, unknown> | undefined
-    const body = summary?.body as string | undefined
-    await abortSession(this.client, sessionData.id)
-    return body || text
+    const label = field === 'goal' ? '目标' : '描述'
+
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'user', content: promptText },
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+      }),
+    })
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '')
+      throw new Error(`LLM API error (${res.status}): ${errBody}`)
+    }
+
+    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+    const result = data?.choices?.[0]?.message?.content?.trim()
+    if (!result) throw new Error('LLM returned empty response')
+    logger.info('eval', `Text optimized: ${label}`, { before: text.length, after: result.length })
+    return result
   }
 
   /** 添加新任务到队列：生成唯一 ID、注册 DAG、入调度队列 */

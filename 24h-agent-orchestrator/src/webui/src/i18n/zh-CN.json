@@ -3,6 +3,7 @@
   "app.tasks": "任务",
   "app.active": "活跃",
   "app.noTasks": "暂无任务。请在底栏添加。",
+  "tab.orchestrator": "编排器",
   "tab.console": "流式控制台",
   "tab.timeline": "时间线",
   "tab.health": "健康监控",

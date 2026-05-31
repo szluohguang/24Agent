@@ -3,6 +3,7 @@
   "app.tasks": "Tasks",
   "app.active": "Active",
   "app.noTasks": "No tasks yet. Create one below.",
+  "tab.orchestrator": "Orchestrator",
   "tab.console": "Stream Console",
   "tab.timeline": "Timeline",
   "tab.health": "Health",
