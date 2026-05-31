@@ -5,10 +5,9 @@ import { useLocale } from './i18n/useLocale.js'
 import { StreamConsole } from './components/StreamConsole.js'
 import { TreeView } from './components/TreeView.js'
 import { HealthDashboard } from './components/HealthDashboard.js'
-import { ScheduleManager } from './components/ScheduleManager.js'
 import { ReviewPanel } from './components/ReviewPanel.js'
-import { HistoryPanel } from './components/HistoryPanel.js'
-import { WebhookManager } from './components/WebhookManager.js'
+import { SettingsPage } from './components/SettingsPage.js'
+import { ProjectDetail } from './components/ProjectDetail.js'
 import type { TaskNode, TimelineEntryData } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
@@ -42,8 +41,7 @@ export function App() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>()
   const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
   const [healthStale, setHealthStale] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'schedule' | 'history' | 'webhook' | 'config'>('schedule')
+  const [page, setPage] = useState<'home' | 'settings' | 'project'>('home')
   const [taskInput, setTaskInput] = useState('')
   const [followUpInput, setFollowUpInput] = useState('')
   const [lastUserPrompt, setLastUserPrompt] = useState('')
@@ -241,7 +239,32 @@ export function App() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18, fontWeight: 'bold' }}>⚡</span>
-          <span style={{ fontSize: 15, fontWeight: 600 }}><FormattedMessage id="app.title" /></span>
+          <span
+            style={{ fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+            onClick={() => setPage('home')}
+          >
+            <FormattedMessage id="app.title" />
+          </span>
+          <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
+            <button
+              onClick={() => setPage('settings')}
+              style={{
+                padding: '4px 10px', background: page === 'settings' ? '#0d1117' : 'transparent',
+                color: '#c9d1d9', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+              }}
+            >
+              <FormattedMessage id="nav.settings" />
+            </button>
+            <button
+              onClick={() => setPage('project')}
+              style={{
+                padding: '4px 10px', background: page === 'project' ? '#0d1117' : 'transparent',
+                color: '#c9d1d9', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
+              }}
+            >
+              <FormattedMessage id="nav.project" />
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
@@ -281,7 +304,7 @@ export function App() {
           </select>
 
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => setPage('settings')}
             title={intl.formatMessage({ id: 'app.settings' })}
             style={{
               padding: '4px 8px', background: '#21262d', color: '#c9d1d9',
@@ -293,107 +316,10 @@ export function App() {
         </div>
       </div>
 
-      {/* Settings modal */}
-      {showSettings && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} onClick={() => setShowSettings(false)}>
-          <div style={{
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
-            width: '80%', maxWidth: 700, maxHeight: '80vh', overflow: 'auto',
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '12px 16px', borderBottom: '1px solid #30363d',
-            }}>
-              <h3 style={{ margin: 0, fontSize: 15 }}><FormattedMessage id="app.settings" /></h3>
-              <button onClick={() => setShowSettings(false)} style={{
-                background: 'transparent', border: 'none', color: '#8b949e',
-                cursor: 'pointer', fontSize: 18,
-              }}>✕</button>
-            </div>
-            <div style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
-              {(['schedule', 'history', 'webhook', 'config'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setSettingsTab(tab)}
-                  style={{
-                    flex: 1, padding: '8px 16px', cursor: 'pointer', fontSize: 13,
-                    background: settingsTab === tab ? '#0d1117' : 'transparent',
-                    color: settingsTab === tab ? '#c9d1d9' : '#8b949e',
-                    border: 'none', borderBottom: settingsTab === tab ? '2px solid #58a6ff' : '2px solid transparent',
-                    fontWeight: settingsTab === tab ? 600 : 400,
-                  }}
-                >
-                  {tab === 'schedule' && <FormattedMessage id="tab.schedule" />}
-                  {tab === 'history' && <FormattedMessage id="history.title" />}
-                  {tab === 'webhook' && <FormattedMessage id="webhook.title" />}
-                  {tab === 'config' && <FormattedMessage id="tab.config" />}
-                </button>
-              ))}
-            </div>
-            <div style={{ padding: 8, flex: 1, overflow: 'auto' }}>
-              {settingsTab === 'schedule' && <ScheduleManager />}
-              {settingsTab === 'history' && <HistoryPanel entries={timelineEntries} />}
-              {settingsTab === 'webhook' && <WebhookManager />}
-              {settingsTab === 'config' && (
-                <div style={{ padding: 12 }}>
-                  <h3 style={{ margin: '0 0 12px', fontSize: 14 }}><FormattedMessage id="tab.config" /></h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>
-                        <FormattedMessage id="config.budgetLimit" />
-                      </label>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          type="number"
-                          value={budget.limit}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value)
-                            if (!isNaN(v) && v >= 0) {
-                              setBudget((prev) => ({ ...prev, limit: v }))
-                              send({ type: 'set-budget', limit: v })
-                            }
-                          }}
-                          style={{
-                            flex: 1, padding: '6px 10px', background: '#0d1117', color: '#c9d1d9',
-                            border: '1px solid #30363d', borderRadius: 4, fontSize: 13,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>
-                        <FormattedMessage id="config.spent" />
-                      </label>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#d29922', marginBottom: 8 }}>
-                        ¥{budget.spent.toFixed(2)}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setBudget((prev) => ({ ...prev, spent: 0 }))
-                          send({ type: 'reset-budget' })
-                        }}
-                        style={{
-                          padding: '6px 16px', background: '#da3633', color: '#fff',
-                          border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13,
-                        }}
-                      >
-                        <FormattedMessage id="config.resetBudget" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Three-column layout */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Left column: Task Tree (fixed width) */}
+      {/* Page content */}
+      {page === 'home' ? (
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Left column: Task Tree (fixed width) */}
         <div style={{
           width: 320, flexShrink: 0,
           display: 'flex', flexDirection: 'column',
@@ -470,7 +396,7 @@ export function App() {
           )}
         </div>
 
-        {/* Right column: Health Dashboard (fixed width, right-aligned) */}
+          {/* Right column: Health Dashboard (fixed width, right-aligned) */}
         <div style={{
           width: 300, flexShrink: 0,
           borderLeft: '1px solid #30363d', background: '#0d1117', overflow: 'auto',
@@ -481,6 +407,16 @@ export function App() {
           })} stale={healthStale} tasks={{ total: tasks.length, running: tasks.filter((t) => t.status === 'running').length }} budget={budget} />
         </div>
       </div>
+      ) : page === 'settings' ? (
+        <SettingsPage
+          timelineEntries={timelineEntries}
+          budget={budget}
+          send={send}
+          setBudget={setBudget}
+        />
+      ) : (
+        <ProjectDetail onNavigate={(p) => setPage(p)} />
+      )}
     </div>
   )
 }

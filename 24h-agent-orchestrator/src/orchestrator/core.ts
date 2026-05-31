@@ -258,6 +258,16 @@ export class Orchestrator {
     this.store.setConfig('maxParallel', String(count))
   }
 
+  getProjectConfig(): { directory: string; goal: string; description: string } {
+    return this.store.getProjectConfig()
+  }
+
+  setProjectConfig(config: { directory: string; goal: string; description: string }): void {
+    this.store.setProjectConfig(config)
+    this.addTimeline('system', 'system', 'config-update', 'Project configuration updated')
+    this.callbacks.onStateChange()
+  }
+
   /** 添加新任务到队列：生成唯一 ID、注册 DAG、入调度队列 */
   addTask(description: string, dependsOn: string[] = []) {
     const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`

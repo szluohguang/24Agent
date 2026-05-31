@@ -233,4 +233,31 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
       return { success: true }
     },
   )
+
+  // ── Project Config ──
+
+  app.get('/api/project/config', async () => {
+    return orchestrator.getProjectConfig()
+  })
+
+  app.put<{ Body: { directory?: string; goal?: string; description?: string } }>(
+    '/api/project/config',
+    async (request, reply) => {
+      if (!request.body || typeof request.body !== 'object') {
+        return reply.status(400).send({ error: 'Invalid request body' })
+      }
+      const { directory, goal, description } = request.body
+      if (directory !== undefined && typeof directory !== 'string') {
+        return reply.status(400).send({ error: 'directory must be a string' })
+      }
+      if (goal !== undefined && typeof goal !== 'string') {
+        return reply.status(400).send({ error: 'goal must be a string' })
+      }
+      if (description !== undefined && typeof description !== 'string') {
+        return reply.status(400).send({ error: 'description must be a string' })
+      }
+      orchestrator.setProjectConfig({ directory: directory || '', goal: goal || '', description: description || '' })
+      return { success: true }
+    },
+  )
 }

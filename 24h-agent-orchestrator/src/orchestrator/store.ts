@@ -228,6 +228,20 @@ export class Store {
     return config
   }
 
+  getProjectConfig(): { directory: string; goal: string; description: string } {
+    return {
+      directory: this.getConfig('project_directory') || '',
+      goal: this.getConfig('project_goal') || '',
+      description: this.getConfig('project_description') || '',
+    }
+  }
+
+  setProjectConfig(config: { directory: string; goal: string; description: string }): void {
+    this.setConfig('project_directory', config.directory)
+    this.setConfig('project_goal', config.goal)
+    this.setConfig('project_description', config.description)
+  }
+
   // ── Scheduled Tasks ──
 
   insertSchedule(schedule: ScheduledTask): void {
