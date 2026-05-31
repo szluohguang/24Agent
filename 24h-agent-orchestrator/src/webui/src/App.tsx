@@ -139,6 +139,7 @@ export function App() {
       }
       case 'task-deleted': {
         const msg = lastMessage as { type: 'task-deleted'; taskId: string }
+        if (typeof msg.taskId !== 'string') break
         setTasks((prev) => prev.filter((t) => t.id !== msg.taskId))
         setSelectedTaskId((prev) => prev === msg.taskId ? undefined : prev)
         break

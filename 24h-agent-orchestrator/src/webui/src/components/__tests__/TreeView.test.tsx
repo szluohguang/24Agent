@@ -21,7 +21,7 @@ const noop = () => {}
 
 function renderTree(tasks: TaskNode[], agents: Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }> = [], extra: Partial<Parameters<typeof TreeView>[0]> = {}) {
   return renderWithIntl(
-    <TreeView tasks={tasks} agents={agents} selectedTaskId={extra.selectedTaskId} onDispatch={extra.onDispatch || noop} onAbort={extra.onAbort || noop} onSelect={extra.onSelect || noop} />
+    <TreeView tasks={tasks} agents={agents} selectedTaskId={extra.selectedTaskId} onDispatch={extra.onDispatch || noop} onAbort={extra.onAbort || noop} onSelect={extra.onSelect || noop} onDelete={extra.onDelete || noop} />
   )
 }
 
@@ -30,17 +30,66 @@ function renderTree(tasks: TaskNode[], agents: Array<{ sessionId: string; taskId
     expect(screen.getByText(/app\.noTasks/)).toBeInTheDocument()
   })
 
-  it('renders a pending task with dispatch button', () => {
+  it('renders a pending task with dispatch and delete buttons', () => {
     renderTree([baseTask])
     expect(screen.getByText('test task')).toBeInTheDocument()
     expect(screen.getByText(/task\.dispatch/)).toBeInTheDocument()
+    expect(screen.getByText(/task\.delete/)).toBeInTheDocument()
   })
 
-  it('shows abort button for running task', () => {
+  it('shows abort and delete buttons for running task', () => {
     const runningTask: TaskNode = { ...baseTask, status: 'running', sessionId: 'sess-1' }
     renderTree([runningTask])
     expect(screen.getByText(/task\.abort/)).toBeInTheDocument()
+    expect(screen.getByText(/task\.delete/)).toBeInTheDocument()
     expect(screen.queryByText(/task\.dispatch/)).not.toBeInTheDocument()
+  })
+
+  it('shows delete button for completed task', () => {
+    const completedTask: TaskNode = { ...baseTask, status: 'completed' }
+    renderTree([completedTask])
+    expect(screen.getByText(/task\.delete/)).toBeInTheDocument()
+  })
+
+  it('shows delete button for failed task', () => {
+    const failedTask: TaskNode = { ...baseTask, status: 'failed' }
+    renderTree([failedTask])
+    expect(screen.getByText(/task\.delete/)).toBeInTheDocument()
+  })
+
+  it('calls onDelete directly for non-running task', () => {
+    const onDelete = vi.fn()
+    renderTree([baseTask], [], { onDelete })
+    fireEvent.click(screen.getByText(/task\.delete/))
+    expect(onDelete).toHaveBeenCalledWith('task-1')
+  })
+
+  it('shows confirmation dialog for running task delete', () => {
+    const runningTask: TaskNode = { ...baseTask, status: 'running', sessionId: 'sess-1' }
+    renderTree([runningTask])
+    fireEvent.click(screen.getByText(/task\.delete/))
+    expect(screen.getByText('dialog.confirmDeleteRunning')).toBeInTheDocument()
+    expect(screen.getByText('dialog.cancel')).toBeInTheDocument()
+    expect(screen.getByText('dialog.confirm')).toBeInTheDocument()
+  })
+
+  it('calls onAbort then onDelete when confirming running task delete', () => {
+    const onAbort = vi.fn()
+    const onDelete = vi.fn()
+    const runningTask: TaskNode = { ...baseTask, status: 'running', sessionId: 'sess-1' }
+    renderTree([runningTask], [], { onAbort, onDelete })
+    fireEvent.click(screen.getByText(/task\.delete/))
+    fireEvent.click(screen.getByText('dialog.confirm'))
+    expect(onAbort).toHaveBeenCalledWith('task-1')
+    expect(onDelete).toHaveBeenCalledWith('task-1')
+  })
+
+  it('closes confirmation dialog on cancel', () => {
+    const runningTask: TaskNode = { ...baseTask, status: 'running', sessionId: 'sess-1' }
+    renderTree([runningTask])
+    fireEvent.click(screen.getByText(/task\.delete/))
+    fireEvent.click(screen.getByText('dialog.cancel'))
+    expect(screen.queryByText('dialog.confirmDeleteRunning')).not.toBeInTheDocument()
   })
 
   it('calls onDispatch when dispatch button clicked', () => {

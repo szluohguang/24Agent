@@ -127,11 +127,7 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
         <div style={DIALOG_OVERLAY_STYLE} onClick={() => setConfirmDeleteTaskId(null)}>
           <div style={DIALOG_BOX_STYLE} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 14, color: '#c9d1d9', marginBottom: 16 }}>
-              {isConfirmRunning ? (
-                <FormattedMessage id="dialog.confirmDeleteRunning" />
-              ) : (
-                <FormattedMessage id="dialog.confirmDelete" />
-              )}
+              <FormattedMessage id="dialog.confirmDeleteRunning" />
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setConfirmDeleteTaskId(null)} style={{
@@ -237,7 +233,7 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
                     borderColor: hoveredBtnId === deleteHoverId(task.id) ? '#da3633' : '#30363d',
                     transition: 'border-color 0.15s',
                   }}
-                  title="Delete"
+                  title={intl.formatMessage({ id: 'task.delete' })}
                 >
                   <FormattedMessage id="task.delete" />
                 </button>
@@ -258,18 +254,15 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
 
 const dispatchBtnStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#238636', color: '#fff',
-  border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-  transition: 'border-color 0.15s',
+  borderRadius: 4, cursor: 'pointer', fontSize: 12,
 }
 
 const abortBtnStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#da3633', color: '#fff',
-  border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-  transition: 'border-color 0.15s',
+  borderRadius: 4, cursor: 'pointer', fontSize: 12,
 }
 
 const deleteBtnStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#484f58', color: '#8b949e',
   border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-  transition: 'border-color 0.15s',
 }
