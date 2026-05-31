@@ -160,13 +160,12 @@ export function App() {
           if (!existing) {
             return { ...prev, [msg.sessionId]: { taskId: '', chunks: [c] } }
           }
-          const last = existing.chunks[existing.chunks.length - 1]
-          if (last && last.type === c.type && c.type !== 'tool_call' && c.type !== 'tool_result') {
-            existing.chunks[existing.chunks.length - 1] = { ...last, content: last.content + c.content }
-          } else {
-            existing.chunks.push(c)
-          }
-          return { ...prev, [msg.sessionId]: { ...existing, chunks: [...existing.chunks] } }
+          const oldChunks = existing.chunks
+          const last = oldChunks[oldChunks.length - 1]
+          const newChunks = last && last.type === c.type && c.type !== 'tool_call' && c.type !== 'tool_result'
+            ? [...oldChunks.slice(0, -1), { ...last, content: last.content + c.content }]
+            : [...oldChunks, c]
+          return { ...prev, [msg.sessionId]: { ...existing, chunks: newChunks } }
         })
         break
       }

@@ -8,9 +8,9 @@ The thinking/reasoning card SHALL be expanded automatically while streaming is i
 - **THEN** the thinking card SHALL be in expanded state (not collapsed)
 - **AND** the user can still manually collapse it
 
-#### Scenario: Thinking collapses when done
-- **WHEN** the thinking chunk is complete (next chunk type arrives, or session.idle fires)
-- **THEN** the thinking card SHALL collapse automatically
+#### Scenario: Thinking collapses on next chunk
+- **WHEN** the next non-thinking chunk arrives in the conversation
+- **THEN** the previous thinking card SHALL collapse automatically
 
 ### Requirement: User prompt card styling
 The user's follow-up prompt card SHALL have a light orange background and right-aligned content to visually distinguish it from AI responses.
