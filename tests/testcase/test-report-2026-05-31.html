@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黑盒测试报告</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 40px;
+  }
+  h1 {
+    font-size: 28px;
+    margin-bottom: 4px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+  .summary-bar {
+    display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap;
+  }
+  .summary-item {
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    padding: 14px 20px; min-width: 140px;
+  }
+  .summary-item .label { font-size: 12px; color: #94a3b8; }
+  .summary-item .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .summary-item .value.pass { color: #22c55e; }
+  .summary-item .value.fail { color: #ef4444; }
+  .summary-item .value.partial { color: #f59e0b; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 20px; margin-bottom: 40px; }
+  .card {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .card.pass { border-color: #22c55e; }
+  .card.fail { border-color: #ef4444; }
+  .card.partial { border-color: #f59e0b; }
+
+  .card h2 {
+    font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 .mod-icon { flex-shrink: 0; }
+  .card h2 .mod-status { margin-left: auto; font-size: 18px; }
+  .card .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+  }
+  .badge.ui { background: #1e40af; color: #93c5fd; }
+  .badge.sys { background: #5b21b6; color: #c4b5fd; }
+  .badge.flow { background: #166534; color: #86efac; }
+  .card .desc { font-size: 13px; color: #94a3b8; line-height: 1.6; margin-bottom: 12px; }
+
+  .test-list { list-style: none; padding-left: 0; }
+  .test-list li {
+    padding: 6px 8px; font-size: 13px; border-radius: 6px; margin-bottom: 2px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .test-list li:hover { background: #0f172a; }
+  .test-list li .status { flex-shrink: 0; font-size: 15px; width: 20px; text-align: center; }
+  .test-list li .status.pass { color: #22c55e; }
+  .test-list li .status.fail { color: #ef4444; }
+  .test-list li .label { color: #cbd5e1; line-height: 1.4; }
+  .test-list li .label .op { color: #60a5fa; }
+
+  .section-title {
+    font-size: 20px; color: #f1f5f9; margin: 32px 0 16px;
+    padding-bottom: 8px; border-bottom: 1px solid #334155;
+  }
+
+  .toggle-all { cursor: pointer; color: #a78bfa; font-size: 13px; user-select: none; }
+  .toggle-all:hover { text-decoration: underline; }
+
+  @media (max-width: 768px) {
+    body { padding: 16px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>黑盒测试报告</h1>
+<p class="subtitle" id="reportMeta">运行日期: 2026-05-31 | 运行环境: Windows 10 + Node.js 22 + Chromium (Headless) | 测试耗时: 2.3min | 通过率: 100%</p>
+
+<div class="summary-bar" id="summaryBar"></div>
+
+<h2 class="section-title">核心操作流程</h2>
+<div class="grid" id="flowGrid"></div>
+
+<h2 class="section-title">系统行为</h2>
+<div class="grid" id="sysGrid"></div>
+
+<h2 class="section-title">UI 面板交互</h2>
+<div class="grid" id="uiGrid"></div>
+
+<p style="text-align:center; color:#475569; font-size:12px; margin-top:40px;">
+  生成时间: <span id="genTime"></span>
+</p>
+
+<script>
+// ============================================================
+//  测试结果数据 — 已执行 2026-05-31
+//  每个对象: { name, icon, badge, desc, tests: [{ label, pass }] }
+//  pass: true = ✅ 通过, false = ❌ 失败, null = ⏳ 未测试
+// ============================================================
+const flowModules = [
+  {
+    name: 'task-lifecycle',
+    icon: '📌', badge: 'flow',
+    desc: '✅ 11/11 通过 - 任务创建/分发/流式/完成/失败/中止/删除/依赖',
+    tests: [
+      { label: 'TC-01: 在输入框输入任务描述，点击"创建"，任务树出现新节点', pass: true },
+      { label: 'TC-02: 连续创建多个任务，每个节点描述正确', pass: true },
+      { label: 'TC-03: 创建带依赖的任务', pass: true },
+      { label: 'TC-04: 点击 "Dispatch"，pending → running，控制台输出', pass: true },
+      { label: 'TC-05: StreamConsole 实时追加内容', pass: true },
+      { label: 'TC-06: 任务自动完成 → completed', pass: true },
+      { label: 'TC-07: 重试用尽后显示 failed', pass: true },
+      { label: 'TC-08: 点击 "Abort" 中止运行中任务', pass: true },
+      { label: 'TC-09: 删除已完成任务', pass: true },
+      { label: 'TC-10: 删除运行中任务（API 行为验证）', pass: true },
+      { label: 'TC-11: 依赖任务前序完成后自动分发', pass: true },
+    ],
+  },
+  {
+    name: 'schedule-management',
+    icon: '📌', badge: 'flow',
+    desc: '✅ 6/6 通过 - 定时任务 CRUD / 表单验证 / cron',
+    tests: [
+      { label: 'TC-12: API 添加定时任务返回 id', pass: true },
+      { label: 'TC-13: 获取定时任务列表', pass: true },
+      { label: 'TC-14: 启用/禁用定时任务', pass: true },
+      { label: 'TC-15: 删除定时任务', pass: true },
+      { label: 'TC-16: 无效 cron 表达式被拒绝 (400)', pass: true },
+      { label: 'TC-17: 缺少必填字段被拒绝 (400)', pass: true },
+    ],
+  },
+  {
+    name: 'review-panel',
+    icon: '📌', badge: 'flow',
+    desc: '✅ 5/5 通过 - 审核 API / 404/409/400 边界',
+    tests: [
+      { label: 'TC-18: 查看待审核列表返回数组', pass: true },
+      { label: 'TC-19: 审核不存在任务返回 404', pass: true },
+      { label: 'TC-20: 审核 pending 任务返回 409', pass: true },
+      { label: 'TC-21: 驳回无反馈返回 400', pass: true },
+      { label: 'TC-22: 无待审核任务返回空数组', pass: true },
+    ],
+  },
+  {
+    name: 'system-configuration',
+    icon: '📌', badge: 'flow',
+    desc: '✅ 5/5 通过 - 权限/预算/并行度配置',
+    tests: [
+      { label: 'TC-23: 控制栏显示权限选择器默认 safe', pass: true },
+      { label: 'TC-24: API 切换权限级别', pass: true },
+      { label: 'TC-25: 无效权限级别返回 error', pass: true },
+      { label: 'TC-26: 设置预算上限', pass: true },
+      { label: 'TC-27: 设置并行度', pass: true },
+    ],
+  },
+  {
+    name: 'webhook-management',
+    icon: '📌', badge: 'flow',
+    desc: '✅ 4/4 通过 - Webhook CRUD / 边界验证',
+    tests: [
+      { label: 'TC-28: 获取 webhook 配置列表', pass: true },
+      { label: 'TC-29: 添加 webhook 配置', pass: true },
+      { label: 'TC-30: 缺少 URL 被拒绝 (400)', pass: true },
+      { label: 'TC-31: 删除 webhook', pass: true },
+    ],
+  },
+  {
+    name: 'i18n',
+    icon: '📌', badge: 'flow',
+    desc: '✅ 4/4 通过 - 中文/英文切换/持久化',
+    tests: [
+      { label: 'TC-32: 默认显示中文界面', pass: true },
+      { label: 'TC-33: 点击 English 切换到英文', pass: true },
+      { label: 'TC-34: 中英文来回切换正常', pass: true },
+      { label: 'TC-35: 刷新后语言设置保持', pass: true },
+    ],
+  },
+]
+
+const sysModules = [
+  {
+    name: 'connection-management',
+    icon: '🔗', badge: 'sys',
+    desc: '✅ 2/2 通过 - 连接状态/权限默认值',
+    tests: [
+      { label: 'TC-36: 页面加载后显示"已连接"', pass: true },
+      { label: 'TC-37: 权限选择器默认 safe', pass: true },
+    ],
+  },
+  {
+    name: 'persistence-recovery',
+    icon: '🔗', badge: 'sys',
+    desc: '✅ 2/2 通过 - 页面刷新后数据保持/pending 状态保持',
+    tests: [
+      { label: 'TC-38: 创建任务后刷新页面，任务保持', pass: true },
+      { label: 'TC-39: 刷新后任务状态保持 pending', pass: true },
+    ],
+  },
+  {
+    name: 'system-startup',
+    icon: '🔗', badge: 'sys',
+    desc: '✅ 1/1 通过 - 健康检查端点',
+    tests: [
+      { label: 'TC-40: /health 返回 status=ok / db=connected', pass: true },
+    ],
+  },
+]
+
+const uiModules = [
+  {
+    name: 'task-tree',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 3/3 通过 - 节点展示/依赖/高亮',
+    tests: [
+      { label: 'TC-41: 页面加载后标题可见', pass: true },
+      { label: 'TC-42: 任务节点显示描述和状态标签', pass: true },
+      { label: 'TC-43: 点击节点高亮选中', pass: true },
+    ],
+  },
+  {
+    name: 'stream-console',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 1/1 通过 - 空状态显示',
+    tests: [
+      { label: 'TC-44: 无活动会话显示空状态', pass: true },
+    ],
+  },
+  {
+    name: 'timeline',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 1/1 通过 - 事件记录',
+    tests: [
+      { label: 'TC-45: 创建任务后时间线出现事件', pass: true },
+    ],
+  },
+  {
+    name: 'control-bar',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 3/3 通过 - 输入/按钮/连接状态',
+    tests: [
+      { label: 'TC-48: 输入框可输入文字', pass: true },
+      { label: 'TC-49: 输入框清空后按钮状态', pass: true },
+      { label: 'TC-50: 连接状态显示已连接', pass: true },
+    ],
+  },
+  {
+    name: 'health-dashboard',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 1/1 通过 - 空状态 Agent',
+    tests: [
+      { label: 'TC-51: 无活跃 Agent 显示空状态', pass: true },
+    ],
+  },
+  {
+    name: 'system-overview',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 2/2 通过 - 健康指标/任务计数',
+    tests: [
+      { label: 'TC-46: 健康检查返回系统指标', pass: true },
+      { label: 'TC-47: 创建任务后指标更新', pass: true },
+    ],
+  },
+  {
+    name: 'settings-dialog',
+    icon: '🖥', badge: 'ui',
+    desc: '✅ 2/2 通过 - 打开/关闭弹窗',
+    tests: [
+      { label: 'TC-52: 点击设置按钮打开弹窗', pass: true },
+      { label: 'TC-53: 点击蒙层关闭弹窗', pass: true },
+    ],
+  },
+]
+
+// ============================================================
+//  渲染
+// ============================================================
+function render() {
+  const allModules = [...flowModules, ...sysModules, ...uiModules]
+
+  // Summary
+  const totalCases = allModules.reduce((s, m) => s + m.tests.length, 0)
+  const passedCases = allModules.reduce((s, m) => s + m.tests.filter(t => t.pass === true).length, 0)
+  const failedCases = allModules.reduce((s, m) => s + m.tests.filter(t => t.pass === false).length, 0)
+  const untestedCases = totalCases - passedCases - failedCases
+
+  document.getElementById('summaryBar').innerHTML = `
+    <div class="summary-item"><div class="label">总用例</div><div class="value">${totalCases}</div></div>
+    <div class="summary-item"><div class="label">通过</div><div class="value pass">${passedCases}</div></div>
+    <div class="summary-item"><div class="label">失败</div><div class="value fail">${failedCases}</div></div>
+    <div class="summary-item"><div class="label">待测试</div><div class="value partial">${untestedCases}</div></div>
+    <div class="summary-item"><div class="label">通过率</div><div class="value ${passedCases === totalCases ? 'pass' : failedCases > 0 ? 'fail' : 'partial'}">${totalCases ? Math.round(passedCases / totalCases * 100) : 0}%</div></div>
+    <div class="summary-item"><div class="label">模块数</div><div class="value">${allModules.length}</div></div>
+  `
+
+  // Card helper
+  function cardHTML(m) {
+    const allPass = m.tests.length > 0 && m.tests.every(t => t.pass === true)
+    const anyFail = m.tests.some(t => t.pass === false)
+    const statusClass = allPass ? 'pass' : anyFail ? 'fail' : m.tests.some(t => t.pass === true) ? 'partial' : 'partial'
+    const statusEmoji = allPass ? '✅' : anyFail ? '❌' : '⏳'
+    return `
+      <div class="card ${statusClass}">
+        <h2>
+          <span class="mod-icon">${m.icon}</span> ${m.name}
+          <span class="badge ${m.badge}">${m.badge === 'flow' ? '核心流程' : m.badge === 'sys' ? '系统行为' : 'UI 面板'}</span>
+          <span class="mod-status">${statusEmoji}</span>
+        </h2>
+        <div class="desc">${m.desc}</div>
+        <ul class="test-list">
+          ${m.tests.map(t => `
+            <li>
+              <span class="status ${t.pass === true ? 'pass' : t.pass === false ? 'fail' : ''}">${t.pass === true ? '✅' : t.pass === false ? '❌' : '⏳'}</span>
+              <span class="label">${t.label}</span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `
+  }
+
+  document.getElementById('flowGrid').innerHTML = flowModules.map(cardHTML).join('')
+  document.getElementById('sysGrid').innerHTML = sysModules.map(cardHTML).join('')
+  document.getElementById('uiGrid').innerHTML = uiModules.map(cardHTML).join('')
+
+  document.getElementById('genTime').textContent = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+}
+
+render()
+</script>
+</body>
+</html>
