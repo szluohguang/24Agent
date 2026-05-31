@@ -195,8 +195,8 @@ cd src/webui && npx vite
 - **Phase 3** ✅ 弹性能力（重试、超时、预算、持久化、健康监控、自动恢复）
 - **Phase 4 — 人机协作** ✅ 人工审核工作流、中英文国际化、WebUI 全面升级
 - **Phase 4 — 历史记录** ✅ 完整 SQLite 持久化审计日志、时间线可视化（待 WebUI 历史页面）
-- **Phase 4 — 通知系统** 🔜 Webhook 通知、任务状态回调
-- **Future** 🔜 用户认证、多租户、生产部署配置（Docker）
+- **Phase 4 — 通知系统** ✅ Webhook 通知、任务状态回调（WebUI 管理面板）
+- **Future** 🔜 用户认证、多租户、RBAC 权限、更多通知渠道（邮件/Slack）
 
 ## 许可
 
