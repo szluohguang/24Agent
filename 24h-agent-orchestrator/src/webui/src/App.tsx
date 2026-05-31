@@ -47,6 +47,7 @@ export function App() {
   const [taskInput, setTaskInput] = useState('')
   const [followUpInput, setFollowUpInput] = useState('')
   const [lastUserPrompt, setLastUserPrompt] = useState('')
+  const [budget, setBudget] = useState<{ spent: number; limit: number }>({ spent: 0, limit: 50 })
 
   // Health polling
   useEffect(() => {
@@ -79,8 +80,9 @@ export function App() {
     }
   }, [selectedTaskId, tasks])
 
-  const applyState = useCallback((state: { tasks?: TaskNode[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }>; timeline?: TimelineEntryData[] }) => {
+  const applyState = useCallback((state: { tasks?: TaskNode[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }>; timeline?: TimelineEntryData[]; budget?: { spent: number; limit: number } }) => {
     if (state?.tasks) setTasks(state.tasks)
+    if (state?.budget) setBudget(state.budget)
     if (state?.timeline) setTimelineEntries(state.timeline)
     if (state?.agents) {
       const validAgents = state.agents.filter((a): a is typeof a & { sessionId: string } => !!a.sessionId)
@@ -423,7 +425,10 @@ export function App() {
           width: 300, flexShrink: 0,
           borderLeft: '1px solid #30363d', background: '#0d1117', overflow: 'auto',
         }}>
-          <HealthDashboard agents={agents} stale={healthStale} />
+          <HealthDashboard agents={agents.map((a) => {
+            const task = tasks.find((t) => t.id === a.taskId)
+            return { ...a, taskDescription: task?.description }
+          })} stale={healthStale} tasks={{ total: tasks.length, running: tasks.filter((t) => t.status === 'running').length }} budget={budget} />
         </div>
       </div>
     </div>

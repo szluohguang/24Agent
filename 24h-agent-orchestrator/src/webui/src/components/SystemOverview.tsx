@@ -3,6 +3,7 @@ import { FormattedMessage } from 'react-intl'
 interface OverviewData {
   agents: { active: number; total: number }
   tasks: { total: number; running: number; failed: number }
+  budget?: { spent: number; limit: number }
 }
 
 export function SystemOverview({ data }: { data?: OverviewData }) {
@@ -14,12 +15,14 @@ export function SystemOverview({ data }: { data?: OverviewData }) {
     )
   }
 
+  const budgetText = data.budget ? `$${data.budget.spent.toFixed(2)} / $${data.budget.limit.toFixed(2)}` : '$0'
   return (
     <div style={{ display: 'flex', gap: 16, padding: 12, flexWrap: 'wrap' }}>
       <Card label={<FormattedMessage id="health.active" />} value={data.agents.active} color="#238636" />
       <Card label={<FormattedMessage id="health.status" />} value={`${data.agents.active}/${data.agents.total}`} color="#58a6ff" />
+      <Card label={<FormattedMessage id="app.tasks" />} value={`${data.tasks.total}`} color="#58a6ff" />
       <Card label={<FormattedMessage id="health.retries" />} value={data.tasks.failed} color="#da3633" />
-      <Card label={<FormattedMessage id="health.budget" />} value={`$${0}`} color="#d29922" />
+      <Card label={<FormattedMessage id="health.budget" />} value={budgetText} color="#d29922" />
     </div>
   )
 }

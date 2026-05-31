@@ -9,6 +9,7 @@ interface AgentHealthRow {
   healthStatus: string
   lastHeartbeat: number
   startTime: number
+  taskDescription?: string
 }
 
 const HEALTH_COLORS: Record<string, string> = {
@@ -43,12 +44,14 @@ function Duration({ ts }: { ts: number }) {
   return <>{intl.formatMessage({ id: 'health.minSec' }, { min, sec: sec % 60 })}</>
 }
 
-export function HealthDashboard({ agents, stale }: { agents: AgentHealthRow[]; stale: boolean }) {
+export function HealthDashboard({ agents, stale, tasks, budget }: { agents: AgentHealthRow[]; stale: boolean; tasks?: { total: number; running: number }; budget?: { spent: number; limit: number } }) {
+  const dedupedAgents = agents.filter((a, i, arr) => arr.findIndex((x) => x.taskId === a.taskId) === i)
   return (
     <div style={{ opacity: stale ? 0.5 : 1, transition: 'opacity 0.3s' }}>
       <SystemOverview data={{
-        agents: { active: agents.filter((a) => a.healthStatus === 'healthy').length, total: agents.length },
-        tasks: { total: 0, running: 0, failed: agents.filter((a) => a.healthStatus === 'dead').length },
+        agents: { active: dedupedAgents.filter((a) => a.healthStatus === 'healthy').length, total: dedupedAgents.length },
+        tasks: { total: tasks?.total ?? 0, running: tasks?.running ?? 0, failed: dedupedAgents.filter((a) => a.healthStatus === 'dead').length },
+        budget,
       }} />
       {stale && (
         <div style={{ color: '#d29922', padding: '4px 12px', fontSize: 12 }}>
@@ -66,14 +69,15 @@ export function HealthDashboard({ agents, stale }: { agents: AgentHealthRow[]; s
             </tr>
           </thead>
           <tbody>
-            {agents.length === 0 ? (
+            {dedupedAgents.length === 0 ? (
               <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#8b949e' }}><FormattedMessage id="health.noAgents" /></td></tr>
-            ) : agents.map((agent) => {
+            ) : dedupedAgents.map((agent) => {
               const color = HEALTH_COLORS[agent.healthStatus] || '#8b949e'
               return (
                 <tr key={agent.sessionId || agent.taskId} style={{ borderBottom: '1px solid #21262d' }}>
-                  <td style={{ padding: '8px 12px', fontFamily: 'monospace' }}>
-                    {agent.sessionId ? agent.sessionId.slice(0, 8) : '?'} <span style={{ color: '#8b949e' }}>({agent.taskId})</span>
+                  <td style={{ padding: '8px 12px', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={agent.taskDescription || agent.taskId}>
+                    <span style={{ fontSize: 11, color: '#8b949e', fontFamily: 'monospace' }}>[{agent.sessionId ? agent.sessionId.slice(0, 8) : '?'}]</span>{' '}
+                    <span style={{ color: '#c9d1d9' }}>{agent.taskDescription || agent.taskId}</span>
                   </td>
                   <td style={{ padding: '8px 12px' }}>
                     <span style={{ color }}>{STATUS_ICONS[agent.healthStatus] || '○'} {agent.healthStatus}</span>

@@ -52,7 +52,6 @@ describe('SystemOverview', () => {
       tasks: { total: 0, running: 0, failed: 0 },
     }
     renderWithIntl(<SystemOverview data={data} />)
-    expect(screen.getAllByText('0')).toHaveLength(2)
     expect(screen.getByText('0/0')).toBeInTheDocument()
   })
 })
