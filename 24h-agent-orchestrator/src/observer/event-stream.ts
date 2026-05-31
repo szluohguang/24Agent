@@ -32,57 +32,83 @@ export async function subscribeGlobalEvents(
   handlers: EventHandlers,
   signal?: AbortSignal,
 ) {
+  logger.info('session-event', 'Subscribing to global SSE events...')
   const sseResult = await client.global.event()
 
   const stream = sseResult.stream
+  logger.info('session-event', 'SSE stream connected')
   try {
     for await (const event of stream) {
       if (signal?.aborted) break
       if (!event) continue
 
+      // SDK v2 事件格式: { directory, project?, workspace?, payload: { id, type, properties: { sessionID, ... } } }
       const evt = event as Record<string, unknown>
       const payload = evt.payload as Record<string, unknown> | undefined
       if (!payload) continue
 
+      const props = payload.properties as Record<string, unknown> | undefined
       const type = payload.type as string | undefined
-      const sessionId = (payload.sessionID as string) || ''
+      const sessionId = (props?.sessionID as string) || ''
+
+      logger.debug('session-event', `SSE event: ${type}`, { sessionId: sessionId.slice(0, 8) })
 
       // 任意事件都通知 HealthMonitor 刷新最后活跃时间
       handlers.onAnyEvent?.(sessionId)
 
       switch (type) {
+        // SDK v2: 流式文本增量
         case 'session.next.text.delta':
-          handlers.onTextDelta?.(sessionId, (payload.delta as string) || '')
+          handlers.onTextDelta?.(sessionId, (props?.delta as string) || '')
           break
 
+        // SDK v2: 整个消息部分更新（text / tool / shell 等）
+        case 'message.part.updated': {
+          const part = props?.part as Record<string, unknown> | undefined
+          const partType = part?.type as string | undefined
+          if (partType === 'text') {
+            const text = (part?.text as string) || ''
+            if (text) handlers.onTextDelta?.(sessionId, text)
+          } else if (partType === 'tool_use' || partType === 'tool_call') {
+            handlers.onToolCalled?.(sessionId, (part?.name as string) || '', part?.input)
+          } else if (partType === 'shell' || partType === 'bash') {
+            handlers.onShellStarted?.(sessionId, (part?.command as string) || '')
+          }
+          break
+        }
+
+        // SDK v2: 工具调用
         case 'session.next.tool.called':
-          handlers.onToolCalled?.(sessionId, (payload.tool as string) || '', payload.input)
+          handlers.onToolCalled?.(sessionId, (props?.tool as string) || '', props?.input)
           handlers.onTimeline?.({
             id: crypto.randomUUID(),
             time: Date.now(),
             source: 'sub',
             sessionId,
             type: 'tool',
-            message: `Tool: ${payload.tool}`,
+            message: `Tool: ${props?.tool}`,
           })
           break
 
+        // SDK v2: Shell 命令开始
         case 'session.next.shell.started':
-          handlers.onShellStarted?.(sessionId, (payload.command as string) || '')
+          handlers.onShellStarted?.(sessionId, (props?.command as string) || '')
           handlers.onTimeline?.({
             id: crypto.randomUUID(),
             time: Date.now(),
             source: 'sub',
             sessionId,
             type: 'shell',
-            message: `$ ${payload.command}`,
+            message: `$ ${props?.command}`,
           })
           break
 
+        // SDK v2: Shell 命令结束
         case 'session.next.shell.ended':
-          handlers.onShellEnded?.(sessionId, (payload.output as string) || '')
+          handlers.onShellEnded?.(sessionId, (props?.output as string) || '')
           break
 
+        // SDK v2: Session 空闲
         case 'session.idle':
           handlers.onSessionIdle?.(sessionId)
           handlers.onTimeline?.({
@@ -95,16 +121,17 @@ export async function subscribeGlobalEvents(
           })
           break
 
+        // SDK v2: 步骤失败 / 会话错误
         case 'session.next.step.failed':
         case 'session.error':
-          logger.error('session-error', `Session error: ${sessionId.slice(0, 8)}`, { type, sessionId })
+          logger.error('session-event', `Session error: ${sessionId.slice(0, 8)}`, { type, sessionId })
           handlers.onSessionError?.(sessionId, payload)
           break
       }
     }
   } catch (err) {
     if (!signal?.aborted) {
-      logger.error('session-error', 'SSE stream error', { error: err instanceof Error ? err.message : String(err) })
+      logger.error('session-event', 'SSE stream error', { error: err instanceof Error ? err.message : String(err) })
     }
   }
 }
