@@ -6,6 +6,7 @@ interface StreamConsoleProps {
   sessions: Record<string, { taskId: string; stream: string[] }>
   sessionChunks: Record<string, { taskId: string; chunks: ChunkData[] }>
   activeSessionId?: string
+  lastUserPrompt?: string
 }
 
 const CHUNK_ICONS: Record<string, string> = {
@@ -23,20 +24,45 @@ function isErrorContent(content: string): boolean {
   return /error|fail|exception|traceback|SyntaxError|TypeError|ReferenceError/i.test(content)
 }
 
-function ChunkCard({ chunk }: { chunk: ChunkData }) {
-  const [collapsed, setCollapsed] = useState(chunk.type === 'thinking')
+function trimUserPrompt(content: string, lastPrompt?: string): string {
+  if (!lastPrompt || !content) return content
+  const trimmed = content.trimStart()
+  if (trimmed.startsWith(lastPrompt)) {
+    return trimmed.slice(lastPrompt.length).trimStart()
+  }
+  return content
+}
+
+function ChunkCard({ chunk, isLastThinking, lastUserPrompt }: { chunk: ChunkData; isLastThinking?: boolean; lastUserPrompt?: string }) {
+  const [collapsed, setCollapsed] = useState(chunk.type !== 'thinking')
+  const intl = useIntl()
+
+  // thinking 卡片：流式输出中展开（collapsed=false），完成后自动折叠
+  // 初始collapsed = (type !== 'thinking')，即 thinking 开始展开
+  // isLastThinking 为 true 表示下一个 chunk 不是 thinking，该折叠了
+  useEffect(() => {
+    if (chunk.type === 'thinking') {
+      setCollapsed(false)
+    }
+  }, [chunk.type, chunk.content])
+
+  useEffect(() => {
+    if (chunk.type === 'thinking' && isLastThinking && collapsed === false) {
+      setCollapsed(true)
+    }
+  }, [isLastThinking])
 
   if (chunk.type === 'user') {
     return (
-      <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: '#1e293b', border: '1px solid #334155' }}>
+      <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: '#2d1f00', border: '1px solid #664d00' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <span style={{ fontSize: 14 }}>👤</span>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>
+          <span style={{ fontSize: 11, color: '#d4a84b' }}>
             <FormattedMessage id="chunk.you" />
           </span>
-          <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>{ts()}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: '#665d33' }}>{ts()}</span>
         </div>
-        <div style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+        <div style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap', textAlign: 'right' }}>
           {chunk.content}
         </div>
       </div>
@@ -107,6 +133,7 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
     )
   }
 
+  const displayContent = trimUserPrompt(chunk.content, lastUserPrompt)
   return (
     <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: '#161b22', border: '1px solid #30363d' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -117,13 +144,13 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
         <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>{ts()}</span>
       </div>
       <div style={{ fontSize: 13, color: '#c9d1d9', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {chunk.content}
+        {displayContent}
       </div>
     </div>
   )
 }
 
-export function StreamConsole({ sessions, sessionChunks, activeSessionId }: StreamConsoleProps) {
+export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt }: StreamConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -154,33 +181,24 @@ export function StreamConsole({ sessions, sessionChunks, activeSessionId }: Stre
     >
       {sessionIds.map((sid) => {
         const chunkData = sessionChunks[sid]
-        const sessionData = sessions[sid]
 
         if (chunkData?.chunks && chunkData.chunks.length > 0) {
+          const chunks = chunkData.chunks
           return (
             <div key={sid}>
               <div style={{ color: '#58a6ff', fontWeight: 'bold', marginBottom: 8, fontSize: 12, padding: '4px 0' }}>
                 [{sid.slice(0, 8)}] {chunkData.taskId}
               </div>
-              {chunkData.chunks.map((c, i) => (
-                <React.Fragment key={i}>
-                  {i > 0 && <div style={{ height: 1, background: '#21262d', margin: '4px 0 12px' }} />}
-                  <ChunkCard chunk={c} />
-                </React.Fragment>
-              ))}
-            </div>
-          )
-        }
-
-        if (sessionData?.stream) {
-          return (
-            <div key={sid} style={{ marginBottom: 16 }}>
-              <div style={{ color: '#58a6ff', fontWeight: 'bold', marginBottom: 4 }}>
-                [{sid.slice(0, 8)}] {sessionData.taskId}
-              </div>
-              <div style={{ color: '#c9d1d9', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: 13 }}>
-                {sessionData.stream.join('')}
-              </div>
+              {chunks.map((c, i) => {
+                const nextType = i + 1 < chunks.length ? chunks[i + 1].type : undefined
+                const isLastThinking = c.type === 'thinking' && nextType && nextType !== 'thinking'
+                return (
+                  <React.Fragment key={i}>
+                    {i > 0 && <div style={{ height: 1, background: '#21262d', margin: '4px 0 12px' }} />}
+                    <ChunkCard chunk={c} isLastThinking={isLastThinking} lastUserPrompt={lastUserPrompt} />
+                  </React.Fragment>
+                )
+              })}
             </div>
           )
         }

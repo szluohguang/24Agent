@@ -46,6 +46,7 @@ export function App() {
   const [settingsTab, setSettingsTab] = useState<'schedule' | 'history' | 'webhook'>('schedule')
   const [taskInput, setTaskInput] = useState('')
   const [followUpInput, setFollowUpInput] = useState('')
+  const [lastUserPrompt, setLastUserPrompt] = useState('')
 
   // Health polling
   useEffect(() => {
@@ -206,6 +207,7 @@ export function App() {
     e.preventDefault()
     if (!followUpInput.trim() || !activeSessionId) return
     const prompt = followUpInput.trim()
+    setLastUserPrompt(prompt)
     send({ type: 'continue-prompt', sessionId: activeSessionId, prompt })
     setSessionChunks((prev) => {
       const existing = prev[activeSessionId]
@@ -385,7 +387,7 @@ export function App() {
             )}
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} />
+            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} lastUserPrompt={lastUserPrompt} />
           </div>
           {/* Review panel for awaiting_review tasks */}
           {selectedTask?.status === 'awaiting_review' && (

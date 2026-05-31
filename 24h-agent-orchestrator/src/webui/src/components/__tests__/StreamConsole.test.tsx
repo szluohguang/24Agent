@@ -16,34 +16,42 @@ describe('StreamConsole', () => {
     expect(screen.getByText(/stream\.noSessions/)).toBeInTheDocument()
   })
 
-  it('renders session with stream deltas', () => {
-    const sessions = {
-      'sess-001': { taskId: 'task-1', stream: ['delta1', 'delta2'] },
+  it('renders session with chunks', () => {
+    const sessionChunks = {
+      'sess-001': { taskId: 'task-1', chunks: [{ type: 'text', content: 'hello world' }] },
     }
-    renderWithIntl(<StreamConsole sessions={sessions} sessionChunks={{}} />)
+    renderWithIntl(<StreamConsole sessions={{}} sessionChunks={sessionChunks} />)
     expect(screen.getByText(/sess-001/)).toBeInTheDocument()
     expect(screen.getByText(/task-1/)).toBeInTheDocument()
-    expect(screen.getByText(/delta1/)).toBeInTheDocument()
-    expect(screen.getByText(/delta2/)).toBeInTheDocument()
+    expect(screen.getByText(/hello world/)).toBeInTheDocument()
   })
 
   it('renders multiple sessions', () => {
-    const sessions = {
-      'sess-a': { taskId: 'task-1', stream: ['a'] },
-      'sess-b': { taskId: 'task-2', stream: ['b'] },
+    const sessionChunks = {
+      'sess-a': { taskId: 'task-1', chunks: [{ type: 'text', content: 'alpha' }] },
+      'sess-b': { taskId: 'task-2', chunks: [{ type: 'text', content: 'beta' }] },
     }
-    renderWithIntl(<StreamConsole sessions={sessions} sessionChunks={{}} />)
+    renderWithIntl(<StreamConsole sessions={{}} sessionChunks={sessionChunks} />)
     expect(screen.getByText(/task-1/)).toBeInTheDocument()
     expect(screen.getByText(/task-2/)).toBeInTheDocument()
   })
 
   it('filters by activeSessionId when provided', () => {
-    const sessions = {
-      'sess-a': { taskId: 'task-1', stream: ['alpha'] },
-      'sess-b': { taskId: 'task-2', stream: ['beta'] },
+    const sessionChunks = {
+      'sess-a': { taskId: 'task-1', chunks: [{ type: 'text', content: 'alpha' }] },
+      'sess-b': { taskId: 'task-2', chunks: [{ type: 'text', content: 'beta' }] },
     }
-    renderWithIntl(<StreamConsole sessions={sessions} sessionChunks={{}} activeSessionId="sess-a" />)
+    renderWithIntl(<StreamConsole sessions={{}} sessionChunks={sessionChunks} activeSessionId="sess-a" />)
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.queryByText('beta')).not.toBeInTheDocument()
+  })
+
+  it('trims user prompt prefix from AI response', () => {
+    const sessionChunks = {
+      'sess-1': { taskId: 'task-1', chunks: [{ type: 'text', content: 'What is the weather? The weather today is sunny.' }] },
+    }
+    renderWithIntl(<StreamConsole sessions={{}} sessionChunks={sessionChunks} activeSessionId="sess-1" lastUserPrompt="What is the weather?" />)
+    expect(screen.getByText(/The weather today is sunny/)).toBeInTheDocument()
+    expect(screen.queryByText(/^What is the weather\? The weather/)).toBeNull()
   })
 })
