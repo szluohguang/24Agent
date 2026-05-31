@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Orchestrator } from '../orchestrator/core.js'
 import type { PermissionLevel } from '../orchestrator/types.js'
+import type { WebhookConfig } from './notifier.js'
 import { Logger } from '../orchestrator/logger.js'
 
 const logger = Logger.getInstance()
@@ -186,6 +187,50 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     '/api/task/:taskId/review-history',
     async (request) => {
       return orchestrator.getReviewHistory(request.params.taskId)
+    },
+  )
+
+  // ── Webhook Management ──
+
+  app.get('/api/webhooks', async () => {
+    return orchestrator.getWebhooks()
+  })
+
+  app.post<{ Body: WebhookConfig }>(
+    '/api/webhooks',
+    async (request, reply) => {
+      const config = request.body
+      if (!config.url) return reply.status(400).send({ error: 'url is required' })
+      if (!config.events || config.events.length === 0) return reply.status(400).send({ error: 'events must be a non-empty array' })
+      const current = orchestrator.getWebhooks()
+      current.push({ ...config, enabled: config.enabled !== false })
+      orchestrator.setWebhooks(current)
+      return { success: true }
+    },
+  )
+
+  app.delete<{ Querystring: { url: string } }>(
+    '/api/webhooks',
+    async (request, reply) => {
+      const { url } = request.query
+      if (!url) return reply.status(400).send({ error: 'url query param is required' })
+      const current = orchestrator.getWebhooks().filter((w) => w.url !== url)
+      orchestrator.setWebhooks(current)
+      return { success: true }
+    },
+  )
+
+  app.put<{ Querystring: { url: string }; Body: Partial<WebhookConfig> }>(
+    '/api/webhooks',
+    async (request, reply) => {
+      const { url } = request.query
+      if (!url) return reply.status(400).send({ error: 'url query param is required' })
+      const current = orchestrator.getWebhooks()
+      const idx = current.findIndex((w) => w.url === url)
+      if (idx === -1) return reply.status(404).send({ error: 'webhook not found' })
+      current[idx] = { ...current[idx], ...request.body }
+      orchestrator.setWebhooks(current)
+      return { success: true }
     },
   )
 }

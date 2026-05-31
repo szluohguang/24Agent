@@ -95,5 +95,12 @@
   "history.allTypes": "All Types",
   "history.count": "{count} events",
   "history.events": "events",
-  "history.empty": "No matching events."
+  "history.empty": "No matching events.",
+  "webhook.title": "Webhook Notifications",
+  "webhook.urlPlaceholder": "https://example.com/webhook",
+  "webhook.add": "Add Webhook",
+  "webhook.remove": "Remove",
+  "webhook.empty": "No webhooks configured.",
+  "webhook.added": "Webhook added!",
+  "webhook.deleted": "Webhook removed."
 }

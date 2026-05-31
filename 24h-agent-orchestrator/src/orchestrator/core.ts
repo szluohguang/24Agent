@@ -9,6 +9,7 @@ import { HealthMonitor } from './health-monitor.js'
 import { Scheduler } from './scheduler.js'
 import { Recovery } from './recovery.js'
 import { Logger } from './logger.js'
+import { Notifier, type WebhookConfig } from '../server/notifier.js'
 
 const logger = Logger.getInstance()
 
@@ -49,6 +50,20 @@ export class Orchestrator {
   private scheduler: Scheduler
   private recovery: Recovery
   private db: Database.Database
+  private notifier: Notifier = new Notifier()
+
+  getNotifier(): Notifier {
+    return this.notifier
+  }
+
+  setWebhooks(configs: WebhookConfig[]): void {
+    this.notifier.setWebhooks(configs)
+    this.store.setConfig('webhooks', JSON.stringify(configs))
+  }
+
+  getWebhooks(): WebhookConfig[] {
+    return this.notifier.getWebhooks()
+  }
 
   constructor(client: OpencodeClient, callbacks: OrchestratorCallbacks, database: Database.Database) {
     this.client = client
@@ -154,6 +169,13 @@ export class Orchestrator {
 
     const parallel = this.store.getConfig('maxParallel')
     if (parallel) this.maxParallel = parseInt(parallel, 10)
+
+    const webhooks = this.store.getConfig('webhooks')
+    if (webhooks) {
+      try {
+        this.notifier.setWebhooks(JSON.parse(webhooks))
+      } catch { /* ignore invalid webhooks config */ }
+    }
   }
 
   /**
@@ -365,6 +387,7 @@ ${feedbackContext}
 
         this.addTimeline('sub', sessionId, 'awaiting-review',
           `Task awaiting review: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+        this.notifier.notify('task.awaiting_review', { id: task.id, description: task.description, status: 'awaiting_review', result: { summary: result.summary, cost: result.cost } })
       } else {
         task.status = 'completed'
         this.store.updateTask(task)
@@ -380,6 +403,7 @@ ${feedbackContext}
           { taskId: agent.taskId, cost: result.cost, artifacts: result.artifacts })
         this.addTimeline('sub', sessionId, 'complete',
           `Task completed: ${task.description} (cost: $${result.cost.toFixed(4)})`)
+        this.notifier.notify('task.completed', { id: task.id, description: task.description, status: 'completed', result: { summary: result.summary, cost: result.cost } })
       }
 
       this.callbacks.onStateChange()
@@ -419,6 +443,7 @@ ${feedbackContext}
         { taskId: agent.taskId, retries: task.retryCount })
       this.addTimeline('system', sessionId, 'max-retries',
         `Task failed: ${task.description} - max retries exceeded`)
+      this.notifier.notify('task.failed', { id: task.id, description: task.description, status: 'failed', error: task.error })
     } else {
       this.store.updateTask(task)
       agent.status = 'error'
@@ -645,6 +670,7 @@ ${feedbackContext}
 
     this.addTimeline('user', task.sessionId || 'system', 'review-approved',
       `Review approved: ${task.description}${feedback ? ` (feedback: ${feedback})` : ''}`)
+    this.notifier.notify('task.review_approved', { id: task.id, description: task.description, status: 'completed' })
     this.callbacks.onStateChange()
   }
 
@@ -683,6 +709,7 @@ ${feedbackContext}
 
     this.addTimeline('user', task.sessionId || 'system', 'review-rejected',
       `Review rejected: ${task.description} (feedback: ${feedback})`)
+    this.notifier.notify('task.review_rejected', { id: task.id, description: task.description, status: 'rejected', error: feedback })
     this.callbacks.onStateChange()
   }
 }

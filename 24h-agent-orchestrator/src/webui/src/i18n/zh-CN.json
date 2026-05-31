@@ -95,5 +95,12 @@
   "history.allTypes": "所有类型",
   "history.count": "{count} 个事件",
   "history.events": "个事件",
-  "history.empty": "无匹配事件。"
+  "history.empty": "无匹配事件。",
+  "webhook.title": "Webhook 通知",
+  "webhook.urlPlaceholder": "https://example.com/webhook",
+  "webhook.add": "添加 Webhook",
+  "webhook.remove": "删除",
+  "webhook.empty": "未配置 Webhook。",
+  "webhook.added": "Webhook 已添加！",
+  "webhook.deleted": "Webhook 已删除。"
 }
