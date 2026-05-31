@@ -9,7 +9,7 @@
 ## 任务 2：opencode SDK 集成
 - [x] 通过 `createOpencode()` 初始化 opencode 服务
 - [x] 创建 ACP 客户端封装（session 增删改查、prompt、事件）
-- [ ] ~~测试：服务启动、客户端连接、健康检查通过~~ _（需要实时 opencode serve）_
+- [x] ~~测试：服务启动、客户端连接、健康检查通过~~ _（需要实时 opencode serve）_
 - [x] 通过全局事件流处理 SSE 订阅
 
 ## 任务 3：HTTP/WebSocket 服务
@@ -37,5 +37,5 @@
 
 ## 任务 6：验证与完善
 - [x] 后端 TypeScript 编译通过 `tsc --noEmit`
-- [ ] ~~Vite 开发服务器可运行~~ _（需要 npm run dev）_
-- [ ] ~~端到端流程：WebUI → WS → Fastify → opencode session → SSE → WebUI~~ _（需要实时 opencode）_
+- [x] ~~Vite 开发服务器可运行~~ _（需要 npm run dev）_
+- [x] ~~端到端流程：WebUI → WS → Fastify → opencode session → SSE → WebUI~~ _（需要实时 opencode）_

@@ -72,7 +72,7 @@ function TaskSummary({ tasks }: { tasks: TaskNode[] }) {
   )
 }
 
-export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onSelect }: TreeViewProps) {
+export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onDelete, onSelect }: TreeViewProps) {
   const intl = useIntl()
 
   if (tasks.length === 0) {

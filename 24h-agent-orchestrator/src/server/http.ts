@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url'
 import { registerApiRoutes } from './api.js'
 import { registerWebSocket } from './websocket.js'
 import type { Orchestrator } from '../orchestrator/core.js'
+import { Logger } from '../orchestrator/logger.js'
 
+const logger = Logger.getInstance()
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const webuiDist = path.resolve(__dirname, '..', 'webui', 'dist')
 

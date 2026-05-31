@@ -1,7 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import type { Orchestrator } from '../orchestrator/core.js'
 import type { PermissionLevel } from '../orchestrator/types.js'
+import { Logger } from '../orchestrator/logger.js'
 
+const logger = Logger.getInstance()
+
+/**
+ * 注册所有 REST API 路由。
+ * 路由设计遵循 RESTful 风格，所有路径以 /api/ 开头。
+ */
 export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrator) {
   app.get('/api/state', async () => {
     return orchestrator.getState()

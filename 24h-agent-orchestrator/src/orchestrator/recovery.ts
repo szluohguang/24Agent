@@ -2,12 +2,22 @@ import type { OpencodeClient } from '@opencode-ai/sdk/v2'
 import type { Store } from './store.js'
 import type { EventHandlers } from '../observer/event-stream.js'
 import type { TaskState } from './types.js'
+import { Logger } from './logger.js'
+
+const logger = Logger.getInstance()
 
 export interface RecoveryCallbacks {
   onTaskRecovered: (taskId: string) => void
   onSseReconnected: () => void
 }
 
+/**
+ * Recovery — 故障恢复。
+ * 能力：
+ * - SSE 事件流自动重连（指数退避）
+ * - 挂起会话的中止与恢复
+ * - 启动时恢复上次未完成任务（pending / running / failed）
+ */
 export class Recovery {
   private store: Store
   private callbacks: RecoveryCallbacks
@@ -57,6 +67,7 @@ export class Recovery {
           }
           await subscribeGlobalEvents(this.client, this.eventHandlers, this.abortSignal!)
           this.reconnectAttempts = 0
+          logger.info('shutdown', `SSE reconnected after ${this.reconnectAttempts} attempts`)
           this.callbacks.onSseReconnected()
           resolve(true)
         } catch {

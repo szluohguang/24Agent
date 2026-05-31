@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import path from 'node:path'
 import fs from 'node:fs'
 
+/** 数据文件存储目录和文件名 */
 const DB_DIR = 'data'
 const DB_FILE = 'orchestrator.db'
 
@@ -12,6 +13,10 @@ export function getDb(): Database.Database {
   return db
 }
 
+/**
+ * 初始化 SQLite 数据库（单例模式）。
+ * 启用 WAL 模式提升并发读性能，启用外键约束保证数据一致性。
+ */
 export function initDatabase(dbPath?: string): Database.Database {
   if (db) return db
   const resolvedPath = dbPath || path.resolve(process.cwd(), DB_DIR, DB_FILE)
@@ -21,8 +26,11 @@ export function initDatabase(dbPath?: string): Database.Database {
 
   db = new Database(resolvedPath)
 
+  // WAL 模式：写操作不阻塞读操作
   db.pragma('journal_mode = WAL')
+  // 全同步：每次写入都等待磁盘确认，牺牲性能换数据安全
   db.pragma('synchronous = FULL')
+  // 外键约束：保证 agents.taskId 等关联完整性
   db.pragma('foreign_keys = ON')
 
   createTables(db)
@@ -30,6 +38,7 @@ export function initDatabase(dbPath?: string): Database.Database {
   return db
 }
 
+/** 创建所有必要的表结构（幂等，IF NOT EXISTS） */
 function createTables(database: Database.Database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS tasks (

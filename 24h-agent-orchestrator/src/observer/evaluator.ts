@@ -1,10 +1,16 @@
 import type { OpencodeClient } from '@opencode-ai/sdk/v2'
 import { getSessionMessages, getSessionDiff } from '../orchestrator/acp-manager.js'
 import type { TaskResult } from '../orchestrator/types.js'
+import { Logger } from '../orchestrator/logger.js'
+
+const logger = Logger.getInstance()
 
 /**
- * 评估子 Agent 的任务完成情况：
- * 同时拉取消息历史和 diff，从中提取 summary、变更文件列表、费用
+ * 评估子 Agent 的任务完成情况。
+ * 并行拉取消息历史和 diff，从中提取：
+ * - summary: Agent 最后一次回复的总结
+ * - artifacts: 本次变更涉及的文件列表
+ * - cost: 本次会话的 token 费用
  */
 export async function evaluateTaskCompletion(
   client: OpencodeClient,

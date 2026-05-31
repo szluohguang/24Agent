@@ -60,26 +60,18 @@ npm run test:e2e   # playwright test (需先 build)
 - git commit message 使用中文：`<type>: 中文描述`（如 `feat: 添加用户登录功能`）
 - 输出的所有文档、注释、报告、日志尽可能使用中文，方便我阅读；但代码标识符使用英文
 
-### 规则 2：双阶段分工
-- **需求规划** → OpenSpec 技能（`/opsx-propose` 创建 proposal/design/tasks）
-- **确认关卡**：tasks 创建后必须用 Question 工具展示给用户，确认后才能继续
-- **代码实现+验证归档** → Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）
+### 规则 2：研发流程：
+- **类型判断**：
+1、如果是新需求，则走新需求流程，比如：新需求：添加工具栏 or 新需求：xxx
+2、如果是bug修改，则走 bug 修改流程，比如：bug修改：修复 xxx
 
-### 规则 3：Superpowers 实施工作流（强制）
-进入 `/opsx-apply` 后，按以下顺序执行：
-
-```
-┌─ 前置门禁（必须执行，不可跳过）──────────────────────────┐
-│ 使用 Question 工具让用户确认："即将进入实施工作流。我已加载  │
-│ skill('using-superpowers')、skill('test-driven-development')│
-│ (新需求) / skill('systematic-debugging') (Bug)。是否继续?" │
-└────────────────────────────────────────────────────────────┘
-
-步骤 0: 加载 skill("using-superpowers")，声明进入实施工作流
-步骤 1: 读取 openspec tasks.md / design.md / proposal.md
-步骤 2: 按类型执行工作流。**每个产生代码的 task 必须按以下 micro-cycle 执行：**
-
-```
+#### 新需求流程：
+步骤 0：加载 skill("using-superpowers")，声明进入实施工作流；
+步骤 1: 需求规划 → OpenSpec 技能（`/opsx-propose` 创建 proposal/design/tasks）；
+步骤 2: 确认关卡：tasks 创建后必须用 Question 工具展示给用户，确认后才能继续；
+步骤 3: 代码实现+验证归档** → Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）；
+步骤 4: 读取 openspec tasks.md / design.md / proposal.md；
+步骤 5: 为每个产生代码的 task 必须按以下 micro-cycle 执行：
  subagent-driven-development → 测试驱动开发
     │    ├── 实现子 agent (实现 + 测试 + 提交 + 自审)
     │    ├── 规范审查 (代码是否符合 spec)
@@ -95,11 +87,40 @@ finishing-a-development-branch → 合并/PR/保留/放弃
 推送到远程仓库 git commit（中文）
     │
     ▼
-标记 task 为 [x] 前必须满足： 
+标记 task 为 [x] 
 
-```
+#### Bug 修改流程：
+- **bug规划** 使用Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）的 skill('systematic-debugging') 进行bug修复；
+- **代码实现+验证归档** → Superpowers 技能（插件路径 `D:/AIGPT/superpowers`）
+遇到 Bug / 测试失败
+    │
+    ▼
+systematic-debugging
+    ├── Phase 1: 根因调查
+    ├── Phase 2: 模式分析
+    ├── Phase 3: 假设与验证
+    └── Phase 4: 实施 (创建测试 → 修复 → 验证)
+    │
+    ▼
+verification-before-completion → 提交 + 推送
 
-### 规则 4：执行日志 & 报告格式
+### 规则 3：Code Review 流程：
+使用Superpowers 技能（插件路径 `D:/AIGPT/superpowers`），在开发完成后
+步骤 1: 创建 Code Review 需求
+    │
+    ▼
+requesting-code-review → 派发审查子 agent
+    │
+    ▼
+收到反馈 → receiving-code-review
+    ├── 理解 → 验证 → 评估
+    ├── 正确: 修复
+    └── 不正确: 有理有据反驳
+    │
+    ▼
+verification-before-completion → finishing-a-development-branch
+
+### 规则 4：每次任务完成需要完善执行日志 & 报告格式
 - 文件名：`superpowers/execution-{logs,reports}/yyyy-mm-dd-<kebab-英文>.md`
 - **日志**（概要登记）：
   ```markdown
@@ -127,7 +148,7 @@ finishing-a-development-branch → 合并/PR/保留/放弃
 | WebUI 全面升级 | 加载了 TDD skill 但未执行逐 task 的 Red→Green→Refactor 循环；7 个任务组一次性批量提交，未逐个验证；3.3 和测试组仍为 [ ] 但已声称完成 | 前端的测试缺失，部分功能 (cron 预览) 未完成 | 2026-05-24 |
 
 ### 规则 6：代码规范
-- **注释**：关键逻辑需注释说明意图，避免逐行啰嗦。只写"为什么这样写"，不写"在做什么"
+- **注释**：关键代码、逻辑需注释说明意图，但避免逐行啰嗦。
 - **风格**：TypeScript 严格模式，ESNext 目标
 - **结构**：模块化，独立文件，无全局变量污染
 - **测试**：单元/集成/E2E 测试优先级高于文档

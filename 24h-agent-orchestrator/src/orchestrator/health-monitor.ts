@@ -1,4 +1,7 @@
 import type { AgentState, HealthStatus } from './types.js'
+import { Logger } from './logger.js'
+
+const logger = Logger.getInstance()
 
 export type HealthCheckFn = (sessionId: string) => Promise<boolean>
 
@@ -7,6 +10,13 @@ export interface HealthMonitorCallbacks {
   onSseStale: () => void
 }
 
+/**
+ * HealthMonitor — 会话健康监控。
+ * 两层检测：
+ * 1. 心跳（heartbeat）：定期检查 Agent 是否存活
+ * 2. 看门狗（watchdog）：单次会话的静默超时检测
+ * 3. SSE 看门狗：检测全局 SSE 事件流是否中断
+ */
 export class HealthMonitor {
   private agents: Map<string, AgentState> = new Map()
   private healthCheckFn: HealthCheckFn

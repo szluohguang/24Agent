@@ -2,6 +2,9 @@ import type { FastifyInstance } from 'fastify'
 import type { WebSocket } from 'ws'
 import type { Orchestrator } from '../orchestrator/core.js'
 import type { TimelineEntry, AgentState } from '../orchestrator/types.js'
+import { Logger } from '../orchestrator/logger.js'
+
+const logger = Logger.getInstance()
 
 interface WsClient {
   ws: WebSocket

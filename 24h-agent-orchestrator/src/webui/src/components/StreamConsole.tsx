@@ -44,11 +44,9 @@ export function StreamConsole({ sessions, activeSessionId }: StreamConsoleProps)
             <div style={{ color: '#58a6ff', fontWeight: 'bold', marginBottom: 4 }}>
               [{sid.slice(0, 8)}] {session.taskId}
             </div>
-            {session.stream.map((line, i) => (
-              <div key={i} style={{ color: '#c9d1d9', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                {line}
-              </div>
-            ))}
+            <div style={{ color: '#c9d1d9', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+              {session.stream.join('')}
+            </div>
           </div>
         )
       })}

@@ -1,5 +1,8 @@
 import * as cron from 'node-cron'
 import type { TaskState, ScheduledTask } from './types.js'
+import { Logger } from './logger.js'
+
+const logger = Logger.getInstance()
 
 export type TaskCreator = (description: string, dependsOn?: string[]) => Promise<string>
 export type TaskDispatcher = (taskId: string) => Promise<void>
@@ -9,6 +12,13 @@ export interface SchedulerCallbacks {
   onScheduleTriggered: (description: string) => void
 }
 
+/**
+ * Scheduler — 任务调度与 DAG 依赖解析。
+ * 能力：
+ * - DAG 任务依赖管理与循环检测
+ * - 基于队列的调度，支持并行度控制
+ * - cron 定时任务触发
+ */
 export class Scheduler {
   private tasks: Map<string, TaskState> = new Map()
   private queue: string[] = []
@@ -124,7 +134,17 @@ export class Scheduler {
       if (!nextId) break
       this.queue = this.queue.filter((id) => id !== nextId)
       this.activeCount++
-      this.dispatchTask(nextId)
+      // dispatchTask 可能抛出异步错误，必须 catch 避免进程崩溃
+      Promise.resolve(this.dispatchTask(nextId)).catch((err) => {
+        logger.error('scheduler', 'dispatchTask failed', { taskId: nextId, error: err instanceof Error ? err.message : String(err) })
+        this.activeCount = Math.max(0, this.activeCount - 1)
+        const t = this.tasks.get(nextId)
+        if (t) {
+          t.status = 'pending'
+          t.updatedAt = Date.now()
+        }
+        this.enqueue(nextId)
+      })
     }
   }
 

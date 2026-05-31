@@ -8,6 +8,9 @@ import { Store } from './store.js'
 import { HealthMonitor } from './health-monitor.js'
 import { Scheduler } from './scheduler.js'
 import { Recovery } from './recovery.js'
+import { Logger } from './logger.js'
+
+const logger = Logger.getInstance()
 
 /** 编排器状态变更时触发的回调，用于广播到 WebSocket 客户端 */
 export interface OrchestratorCallbacks {
@@ -17,6 +20,18 @@ export interface OrchestratorCallbacks {
   onAgentStateChange: (sessionId: string, state: Partial<AgentState>) => void
 }
 
+/**
+ * Orchestrator — 24/7 Agent 编排核心。
+ *
+ * 职责：
+ * - 管理任务 DAG（创建/分发/中止/重试）
+ * - 通过 ACP Manager 管理子 Agent 会话生命周期
+ * - 通过 Observer 订阅 SSE 事件流实现实时状态追踪
+ * - 通过 HealthMonitor 检测挂起会话并触发恢复
+ * - 通过 Scheduler 实现 cron 定时触发和并行度控制
+ * - 通过 Recovery 实现崩溃重启后的未完成任务恢复
+ * - 通过 Store 实现数据持久化
+ */
 export class Orchestrator {
   private client: OpencodeClient
   private tasks: Map<string, TaskState> = new Map()
@@ -80,19 +95,21 @@ export class Orchestrator {
       this.store,
       {
         onTaskRecovered: (taskId) => this.scheduler.enqueue(taskId),
-        onSseReconnected: () => console.log('[recovery] SSE reconnected'),
+        onSseReconnected: () => logger.info('shutdown', 'SSE reconnected (from orchestrator)'),
       },
     )
 
     this.eventHandlers = this.createEventHandlers()
   }
 
+  /** 组装 SSE 事件处理器集合：将事件流路由到 Orchestrator 内部方法和回调 */
   private createEventHandlers(): EventHandlers {
     return {
       onTextDelta: (sessionId, delta) => {
         const agent = this.agents.get(sessionId)
         if (agent) {
           agent.stream.push(delta)
+          logger.debug('stream', delta, { sessionId })
           this.callbacks.onStreamDelta(sessionId, delta)
         }
       },
@@ -127,6 +144,7 @@ export class Orchestrator {
     }
   }
 
+  /** 从持久化存储中加载配置（权限级别、预算、并行数） */
   private loadConfig() {
     const permission = this.store.getConfig('permissionLevel')
     if (permission) this.permissionLevel = permission as PermissionLevel
@@ -138,6 +156,13 @@ export class Orchestrator {
     if (parallel) this.maxParallel = parseInt(parallel, 10)
   }
 
+  /**
+   * 启动编排器：
+   * 1. 订阅 opencode 全局 SSE 事件流
+   * 2. 启动健康监控心跳
+   * 3. 从持久化加载任务和 Agent 状态到内存
+   * 4. 恢复上次崩溃时未完成的任务
+   */
   async start() {
     this.abortSignal = new AbortController()
     this.recovery.setAbortSignal(this.abortSignal.signal)
@@ -145,7 +170,8 @@ export class Orchestrator {
     subscribeGlobalEvents(this.client, this.eventHandlers, this.abortSignal.signal)
     this.healthMonitor.start()
 
-    // Load persisted state into memory before recovery
+    // 清除 sessionId 为空的脏数据，再从持久化加载到内存
+    this.store.deleteNullSessionAgents()
     const storedTasks = this.store.getAllTasks()
     for (const t of storedTasks) {
       this.tasks.set(t.id, t)
@@ -156,18 +182,21 @@ export class Orchestrator {
       this.healthMonitor.registerSession(a.sessionId, a)
     }
 
-    // 启动时恢复未完成任务
+    // 启动时恢复未完成任务（pending / running / failed 状态的任务）
     await this.recovery.recoverStartupTasks(async (taskId) => this.dispatchTask(taskId))
 
     this.addTimeline('system', 'system', 'start', 'Orchestrator started')
+    logger.info('startup', 'Orchestrator started')
   }
 
+  /** 停止编排器：释放所有定时器、关闭 SSE、中止所有 cron 作业 */
   stop() {
     this.abortSignal?.abort()
     this.healthMonitor.stop()
     this.scheduler.stopAllCronJobs()
     this.recovery.stop()
     this.addTimeline('system', 'system', 'stop', 'Orchestrator stopped')
+    logger.info('shutdown', 'Orchestrator stopped')
   }
 
   getState() {
@@ -195,11 +224,12 @@ export class Orchestrator {
     this.store.setConfig('maxParallel', String(count))
   }
 
+  /** 添加新任务到队列：生成唯一 ID、注册 DAG、入调度队列 */
   addTask(description: string, dependsOn: string[] = []) {
     const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const now = Date.now()
 
-    // DAG 循环依赖检测
+    // 提交前先做 DAG 循环依赖检测，避免死锁
     this.scheduler.validateDag(id, dependsOn)
 
     const task: TaskState = {
@@ -211,11 +241,16 @@ export class Orchestrator {
     this.store.insertTask(task)
     this.scheduler.registerTask(task)
     this.scheduler.enqueue(id)
+    logger.info('task-create', `Task: ${description}`, { taskId: id, dependsOn })
     this.addTimeline('system', 'system', 'task-add', `Task added: ${description}`)
     this.callbacks.onStateChange()
     return id
   }
 
+  /**
+   * 分发任务：通过 ACP 创建子 Agent 会话并发送 prompt。
+   * 包含预算检查、会话创建、Agent 状态注册、prompt 组装与发送。
+   */
   async dispatchTask(taskId: string) {
     const task = this.tasks.get(taskId)
     if (!task) throw new Error(`Task ${taskId} not found`)
@@ -230,12 +265,29 @@ export class Orchestrator {
     task.updatedAt = Date.now()
     this.store.updateTask(task)
 
+    // 使用环境变量 ACP_MODEL 指定模型，格式 "providerID/modelID"
+    // 默认为 deepseek/deepseek-chat（需先配置 DeepSeek API key）
+    const envModel = process.env['ACP_MODEL'] || process.env['OPENCODE_MODEL']
+    const model = envModel?.includes('/')
+      ? { providerID: envModel.split('/')[0]!, modelID: envModel.split('/')[1]! }
+      : { providerID: 'deepseek' as const, modelID: 'deepseek-chat' }
+
     const sessionData = await createSubAgentSession(
       this.client,
       taskId,
-      { providerID: 'anthropic', modelID: 'claude-sonnet-4-20250514' },
+      model,
       this.permissionLevel,
     )
+
+    if (!sessionData?.id) {
+      logger.error('task-fail', 'Session creation returned no ID', { taskId, model })
+      task.status = 'failed'
+      task.error = 'ACP session creation failed — check model/api key config'
+      this.store.updateTask(task)
+      this.scheduler.updateTaskStatus(taskId, 'failed')
+      this.scheduler.onSessionEnded()
+      return
+    }
 
     const sessionId = sessionData.id
     task.sessionId = sessionId
@@ -275,6 +327,7 @@ ${feedbackContext}
 5. Update tasks.md to mark your task as complete
 6. Return a summary of what was done`
 
+    logger.info('task-dispatch', `Dispatched: ${task.description}`, { taskId, sessionId, model: task.permission })
     await sendTaskPrompt(this.client, sessionId, promptText)
     agentState.status = 'running'
     this.store.updateAgent(agentState)
@@ -282,6 +335,7 @@ ${feedbackContext}
     this.callbacks.onStateChange()
   }
 
+  /** 会话 idle 后的完成处理：拉取评估结果、计算费用、触发审核或完成 */
   private async handleSessionComplete(sessionId: string) {
     try {
       const agent = this.agents.get(sessionId)
@@ -295,6 +349,13 @@ ${feedbackContext}
       task.updatedAt = Date.now()
       this.budgetSpent += result.cost
       task.result = result
+
+      // 日志记录完整的流式输出内容（生产模式保留摘要）
+      const fullStream = agent.stream.join('')
+      if (fullStream) {
+        logger.info('stream', `Session output (${fullStream.length} chars)`,
+          { sessionId, taskId: agent.taskId, preview: fullStream.slice(0, 500) })
+      }
 
       if (task.permission === 'strict') {
         task.status = 'awaiting_review'
@@ -315,17 +376,24 @@ ${feedbackContext}
         this.scheduler.onTaskCompleted(agent.taskId)
         this.scheduler.onSessionEnded()
 
+        logger.info('task-complete', `Task completed: ${task.description}`,
+          { taskId: agent.taskId, cost: result.cost, artifacts: result.artifacts })
         this.addTimeline('sub', sessionId, 'complete',
           `Task completed: ${task.description} (cost: $${result.cost.toFixed(4)})`)
       }
 
       this.callbacks.onStateChange()
     } catch (err) {
+      logger.error('eval', 'Evaluation error', { sessionId, error: err instanceof Error ? err.message : String(err) })
       this.addTimeline('system', sessionId, 'eval-error',
         `Evaluation error: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
+  /**
+   * 会话错误处理：标记失败并尝试重试。
+   * 达到最大重试次数后标记为最终失败，否则自动重新分发。
+   */
   private async handleSessionError(sessionId: string, _error: unknown) {
     const agent = this.agents.get(sessionId)
     if (!agent) return
@@ -347,6 +415,8 @@ ${feedbackContext}
       this.scheduler.updateTaskStatus(agent.taskId, 'failed')
       this.scheduler.onSessionEnded()
 
+      logger.error('task-fail', `Task failed after max retries: ${task.description}`,
+        { taskId: agent.taskId, retries: task.retryCount })
       this.addTimeline('system', sessionId, 'max-retries',
         `Task failed: ${task.description} - max retries exceeded`)
     } else {
@@ -356,6 +426,8 @@ ${feedbackContext}
       this.store.updateAgent(agent)
       this.scheduler.onSessionEnded()
 
+      logger.warn('task-retry', `Retrying task: ${task.description} (${task.retryCount}/${task.maxRetries})`,
+        { taskId: agent.taskId, retryCount: task.retryCount })
       this.addTimeline('system', sessionId, 'retry',
         `Retrying task: ${task.description} (attempt ${task.retryCount}/${task.maxRetries})`)
       await this.dispatchTask(task.id)
@@ -363,6 +435,10 @@ ${feedbackContext}
     this.callbacks.onStateChange()
   }
 
+  /**
+   * 处理 HealthMonitor 检测到的挂起会话。
+   * 先尝试中止旧会话，再重新分发任务。超出重试次数则标记失败。
+   */
   private async handleHungSession(sessionId: string) {
     const agent = this.agents.get(sessionId)
     if (!agent) return
@@ -383,6 +459,8 @@ ${feedbackContext}
       this.healthMonitor.unregisterSession(sessionId)
       this.scheduler.onSessionEnded()
 
+      logger.warn('hung', `Session hung, recovering: ${task.description}`,
+        { sessionId, taskId: agent.taskId, retryCount: task.retryCount })
       this.addTimeline('system', sessionId, 'hung-recovery',
         `Session hung, retrying (${task.retryCount}/${task.maxRetries})`)
       await this.dispatchTask(task.id)
@@ -397,12 +475,15 @@ ${feedbackContext}
       this.healthMonitor.unregisterSession(sessionId)
       this.scheduler.onSessionEnded()
 
+      logger.error('hung', `Session hung, max retries exceeded: ${task.description}`,
+        { sessionId, taskId: agent.taskId })
       this.addTimeline('system', sessionId, 'hung-failed',
         `Task failed: ${task.description} - session hung, max retries exceeded`)
     }
     this.callbacks.onStateChange()
   }
 
+  /** 删除任务及其关联的 Agent 会话 */
   deleteTask(taskId: string): void {
     const task = this.tasks.get(taskId)
     if (!task) return
@@ -423,6 +504,7 @@ ${feedbackContext}
     this.callbacks.onStateChange()
   }
 
+  /** 中止运行中的任务：先 ACP abort 会话，再将任务状态回退到 pending */
   async abortTask(taskId: string) {
     const task = this.tasks.get(taskId)
     if (!task) return
@@ -431,7 +513,7 @@ ${feedbackContext}
       try {
         await abortSession(this.client, task.sessionId)
       } catch {
-        // stale session
+        // 会话可能已经过期，忽略错误
       }
       const abortedAgent = this.agents.get(task.sessionId)
       if (abortedAgent) {
@@ -448,6 +530,7 @@ ${feedbackContext}
 
     this.scheduler.onSessionEnded()
 
+    logger.info('task-abort', `Task aborted: ${task.description}`, { taskId })
     this.addTimeline('user', 'system', 'abort', `Aborted: ${task.description}`)
     this.callbacks.onStateChange()
   }
@@ -468,7 +551,9 @@ ${feedbackContext}
 
   // ── Schedule management ──
 
+  /** 添加 cron 定时任务 */
   addSchedule(description: string, cronExpr: string, permission: PermissionLevel = 'safe', budget = 0, maxRetries = 10): string {
+    logger.info('schedule', `Schedule created: ${description}`, { cronExpr })
     const id = `schedule-${Date.now()}`
     const schedule: ScheduledTask = {
       id, description, cronExpr, permission, budget, maxRetries, enabled: true, lastTriggered: 0,
@@ -482,6 +567,7 @@ ${feedbackContext}
     return this.store.getAllSchedules()
   }
 
+  /** 更新定时任务配置 */
   updateSchedule(id: string, updates: Partial<ScheduledTask>): void {
     const schedules = this.store.getAllSchedules()
     const existing = schedules.find((s) => s.id === id)
@@ -493,6 +579,7 @@ ${feedbackContext}
     if (updated.enabled) this.scheduler.registerCronJob(updated)
   }
 
+  /** 删除定时任务 */
   deleteSchedule(id: string): void {
     this.scheduler.unregisterCronJob(id)
     this.store.deleteSchedule(id)
@@ -500,6 +587,7 @@ ${feedbackContext}
 
   // ── Continue prompt ──
 
+  /** 向已完成/空闲的会话发送后续 prompt（人工跟进） */
   async continuePrompt(sessionId: string, promptText: string): Promise<void> {
     const agent = this.agents.get(sessionId)
     if (!agent) throw new Error(`Session ${sessionId} not found`)
@@ -521,10 +609,12 @@ ${feedbackContext}
 
   // ── Human Review ──
 
+  /** 人工审核通过：将任务标记为 completed，触发后续依赖任务 */
   async approveTask(taskId: string, feedback?: string): Promise<void> {
     const task = this.tasks.get(taskId)
     if (!task) throw new Error(`Task ${taskId} not found`)
     if (task.status !== 'awaiting_review') throw new Error(`Task ${taskId} is not awaiting review`)
+    logger.info('review', `Task approved: ${task.description}`, { taskId, feedback })
 
     task.status = 'completed'
     task.updatedAt = Date.now()
@@ -558,12 +648,14 @@ ${feedbackContext}
     this.callbacks.onStateChange()
   }
 
+  /** 人工审核驳回：记录反馈，任务状态改为 rejected，可选择重新分发 */
   async rejectTask(taskId: string, feedback: string): Promise<void> {
     if (!feedback) throw new Error('Feedback is required when rejecting a task')
 
     const task = this.tasks.get(taskId)
     if (!task) throw new Error(`Task ${taskId} not found`)
     if (task.status !== 'awaiting_review') throw new Error(`Task ${taskId} is not awaiting review`)
+    logger.info('review', `Task rejected: ${task.description}`, { taskId, feedback })
 
     task.status = 'rejected'
     task.updatedAt = Date.now()

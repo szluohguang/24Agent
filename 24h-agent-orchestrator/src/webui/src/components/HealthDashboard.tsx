@@ -71,9 +71,9 @@ export function HealthDashboard({ agents, stale }: { agents: AgentHealthRow[]; s
             ) : agents.map((agent) => {
               const color = HEALTH_COLORS[agent.healthStatus] || '#8b949e'
               return (
-                <tr key={agent.sessionId} style={{ borderBottom: '1px solid #21262d' }}>
+                <tr key={agent.sessionId || agent.taskId} style={{ borderBottom: '1px solid #21262d' }}>
                   <td style={{ padding: '8px 12px', fontFamily: 'monospace' }}>
-                    {agent.sessionId.slice(0, 8)} <span style={{ color: '#8b949e' }}>({agent.taskId})</span>
+                    {agent.sessionId ? agent.sessionId.slice(0, 8) : '?'} <span style={{ color: '#8b949e' }}>({agent.taskId})</span>
                   </td>
                   <td style={{ padding: '8px 12px' }}>
                     <span style={{ color }}>{STATUS_ICONS[agent.healthStatus] || '○'} {agent.healthStatus}</span>

@@ -1,6 +1,14 @@
 import type Database from 'better-sqlite3'
 import type { TaskState, AgentState, TimelineEntry, ScheduledTask, PermissionLevel, ReviewRecord } from './types.js'
+import { Logger } from './logger.js'
 
+const logger = Logger.getInstance()
+
+/**
+ * Store — SQLite 数据持久化层。
+ * 所有结构化数据（tasks / agents / timeline / reviews / schedules / config）的统一读写入口。
+ * 每个方法对应一个表的 CRUD 操作。
+ */
 export class Store {
   private db: Database.Database
 
@@ -81,6 +89,10 @@ export class Store {
   // ── Agents ──
 
   insertAgent(agent: AgentState): void {
+    if (!agent.sessionId) {
+      logger.warn('store', 'Skipping agent insert with null sessionId', { taskId: agent.taskId })
+      return
+    }
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO agents (sessionId, taskId, status, startTime, model, provider, lastHeartbeat, watchdogTimeout, healthStatus)
       VALUES (@sessionId, @taskId, @status, @startTime, @model, @provider, @lastHeartbeat, @watchdogTimeout, @healthStatus)
@@ -106,8 +118,12 @@ export class Store {
   }
 
   getAllAgents(): AgentState[] {
-    const rows = this.db.prepare('SELECT * FROM agents').all() as Record<string, unknown>[]
+    const rows = this.db.prepare('SELECT * FROM agents WHERE sessionId IS NOT NULL').all() as Record<string, unknown>[]
     return rows.map((r) => this.rowToAgent(r))
+  }
+
+  deleteNullSessionAgents(): void {
+    this.db.prepare('DELETE FROM agents WHERE sessionId IS NULL').run()
   }
 
   getAgentsByTaskId(taskId: string): AgentState[] {

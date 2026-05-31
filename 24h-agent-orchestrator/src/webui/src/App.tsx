@@ -12,11 +12,22 @@ import type { TaskNode, TimelineEntryData } from './types.js'
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
 export function App() {
-  const { connected, lastMessage, send, isReconnecting, reconnectAttempts } = useWebSocket(WS_URL)
+  const [sessions, setSessions] = useState<Record<string, { taskId: string; stream: string[] }>>({})
+  const { connected, lastMessage, send, isReconnecting, reconnectAttempts } = useWebSocket(WS_URL, {
+    // 直接从 WebSocket onmessage 更新 sessions，避免 setLastMessage 批处理丢包
+    onStreamDelta: (sessionId, delta) => {
+      setSessions((prev) => {
+        const existing = prev[sessionId]
+        if (!existing) {
+          return { ...prev, [sessionId]: { taskId: '', stream: [delta] } }
+        }
+        return { ...prev, [sessionId]: { ...existing, stream: [...existing.stream, delta] } }
+      })
+    },
+  })
   const { locale, setLocale } = useLocale()
   const intl = useIntl()
   const [tasks, setTasks] = useState<TaskNode[]>([])
-  const [sessions, setSessions] = useState<Record<string, { taskId: string; stream: string[] }>>({})
   const [timelineEntries, setTimelineEntries] = useState<TimelineEntryData[]>([])
   const [permissionLevel, setPermissionLevel] = useState('safe')
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>()
@@ -62,14 +73,15 @@ export function App() {
     if (state?.tasks) setTasks(state.tasks)
     if (state?.timeline) setTimelineEntries(state.timeline)
     if (state?.agents) {
+      const validAgents = state.agents.filter((a): a is typeof a & { sessionId: string } => !!a.sessionId)
       setSessions((prev) => {
         const merged = { ...prev }
-        for (const a of state.agents) {
+        for (const a of validAgents) {
           merged[a.sessionId] = { taskId: a.taskId, stream: a.stream || [] }
         }
         return merged
       })
-      setAgents(state.agents.map((a) => ({
+      setAgents(validAgents.map((a) => ({
         sessionId: a.sessionId, taskId: a.taskId,
         healthStatus: a.healthStatus || 'healthy',
         lastHeartbeat: a.lastHeartbeat || Date.now(),
@@ -101,17 +113,6 @@ export function App() {
       case 'timeline': {
         const msg = lastMessage as { type: 'timeline'; entry: TimelineEntryData }
         if (msg.entry) setTimelineEntries((prev) => [...prev, msg.entry])
-        break
-      }
-      case 'stream-delta': {
-        const msg = lastMessage as { type: 'stream-delta'; sessionId: string; delta: string }
-        setSessions((prev) => {
-          const existing = prev[msg.sessionId]
-          if (!existing) {
-            return { ...prev, [msg.sessionId]: { taskId: '', stream: [msg.delta] } }
-          }
-          return { ...prev, [msg.sessionId]: { ...existing, stream: [...existing.stream, msg.delta] } }
-        })
         break
       }
       case 'agent-state': {

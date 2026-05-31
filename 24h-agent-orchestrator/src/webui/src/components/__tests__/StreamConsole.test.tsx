@@ -23,8 +23,8 @@ describe('StreamConsole', () => {
     renderWithIntl(<StreamConsole sessions={sessions} />)
     expect(screen.getByText(/sess-001/)).toBeInTheDocument()
     expect(screen.getByText(/task-1/)).toBeInTheDocument()
-    expect(screen.getByText('delta1')).toBeInTheDocument()
-    expect(screen.getByText('delta2')).toBeInTheDocument()
+    expect(screen.getByText(/delta1/)).toBeInTheDocument()
+    expect(screen.getByText(/delta2/)).toBeInTheDocument()
   })
 
   it('renders multiple sessions', () => {
