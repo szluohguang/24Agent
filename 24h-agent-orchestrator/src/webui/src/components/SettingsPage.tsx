@@ -9,11 +9,11 @@ import type { TimelineEntryData } from '../types'
 type SettingsTab = 'schedule' | 'history' | 'webhook' | 'config' | 'project'
 
 const SIDEBAR_ITEMS: { key: SettingsTab; messageId: string }[] = [
+  { key: 'project', messageId: 'projectSettings.title' },
   { key: 'schedule', messageId: 'tab.schedule' },
   { key: 'history', messageId: 'history.title' },
   { key: 'webhook', messageId: 'webhook.title' },
   { key: 'config', messageId: 'tab.config' },
-  { key: 'project', messageId: 'projectSettings.title' },
 ]
 
 interface SettingsPageProps {

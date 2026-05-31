@@ -7,7 +7,6 @@ import { TreeView } from './components/TreeView.js'
 import { HealthDashboard } from './components/HealthDashboard.js'
 import { ReviewPanel } from './components/ReviewPanel.js'
 import { SettingsPage } from './components/SettingsPage.js'
-import { ProjectDetail } from './components/ProjectDetail.js'
 import type { TaskNode, TimelineEntryData } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
@@ -41,7 +40,7 @@ export function App() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>()
   const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
   const [healthStale, setHealthStale] = useState(false)
-  const [page, setPage] = useState<'home' | 'settings' | 'project'>('home')
+  const [page, setPage] = useState<'home' | 'settings'>('home')
   const [taskInput, setTaskInput] = useState('')
   const [followUpInput, setFollowUpInput] = useState('')
   const [lastUserPrompt, setLastUserPrompt] = useState('')
@@ -245,26 +244,6 @@ export function App() {
           >
             <FormattedMessage id="app.title" />
           </span>
-          <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
-            <button
-              onClick={() => setPage('settings')}
-              style={{
-                padding: '4px 10px', background: page === 'settings' ? '#0d1117' : 'transparent',
-                color: '#c9d1d9', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-              }}
-            >
-              <FormattedMessage id="nav.settings" />
-            </button>
-            <button
-              onClick={() => setPage('project')}
-              style={{
-                padding: '4px 10px', background: page === 'project' ? '#0d1117' : 'transparent',
-                color: '#c9d1d9', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-              }}
-            >
-              <FormattedMessage id="nav.project" />
-            </button>
-          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
@@ -407,15 +386,13 @@ export function App() {
           })} stale={healthStale} tasks={{ total: tasks.length, running: tasks.filter((t) => t.status === 'running').length }} budget={budget} />
         </div>
       </div>
-      ) : page === 'settings' ? (
+      ) : (
         <SettingsPage
           timelineEntries={timelineEntries}
           budget={budget}
           send={send}
           setBudget={setBudget}
         />
-      ) : (
-        <ProjectDetail onNavigate={(p) => setPage(p)} />
       )}
     </div>
   )

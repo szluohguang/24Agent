@@ -1,7 +1,7 @@
 import type { OpencodeClient } from '@opencode-ai/sdk/v2'
 import type Database from 'better-sqlite3'
 import type { TaskState, AgentState, TimelineEntry, PermissionLevel, ScheduledTask, HealthStatus, ReviewRecord } from './types.js'
-import { createSubAgentSession, sendTaskPrompt, abortSession } from './acp-manager.js'
+import { createSubAgentSession, sendTaskPrompt, abortSession, getSessionMessages } from './acp-manager.js'
 import { evaluateTaskCompletion } from '../observer/evaluator.js'
 import { subscribeGlobalEvents, type EventHandlers } from '../observer/event-stream.js'
 import { Store } from './store.js'
@@ -266,6 +266,20 @@ export class Orchestrator {
     this.store.setProjectConfig(config)
     this.addTimeline('system', 'system', 'config-update', 'Project configuration updated')
     this.callbacks.onStateChange()
+  }
+
+  async optimizeText(field: string, text: string): Promise<string> {
+    const promptText = `请优化以下项目${field === 'goal' ? '目标' : '描述'}文本，使其更清晰、专业、简洁。直接返回优化后的内容，不要加任何解释。\n\n${text}`
+    const sessionData = await createSubAgentSession(this.client, 'optimize-text', { providerID: 'deepseek', modelID: 'deepseek-chat' }, 'trusted')
+    if (!sessionData?.id) throw new Error('Failed to create optimization session')
+    await sendTaskPrompt(this.client, sessionData.id, promptText)
+    const messagesData = await getSessionMessages(this.client, sessionData.id)
+    const messages = Array.isArray(messagesData) ? messagesData : (messagesData as { items?: unknown[] })?.items || []
+    const lastAssistant = [...messages].reverse().find((m: { role?: string }) => m?.role === 'assistant') as Record<string, unknown> | undefined
+    const summary = lastAssistant?.summary as Record<string, unknown> | undefined
+    const body = summary?.body as string | undefined
+    await abortSession(this.client, sessionData.id)
+    return body || text
   }
 
   /** 添加新任务到队列：生成唯一 ID、注册 DAG、入调度队列 */

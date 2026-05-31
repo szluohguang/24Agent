@@ -260,4 +260,20 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
       return { success: true }
     },
   )
+
+  app.post<{ Body: { field: string; text: string } }>(
+    '/api/project/optimize',
+    async (request, reply) => {
+      const { field, text } = request.body
+      if (!field || !text) {
+        return reply.status(400).send({ error: 'field and text are required' })
+      }
+      try {
+        const optimized = await orchestrator.optimizeText(field, text)
+        return { text: optimized }
+      } catch (err) {
+        return reply.status(500).send({ error: err instanceof Error ? err.message : 'Optimization failed' })
+      }
+    },
+  )
 }

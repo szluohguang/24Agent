@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { FormattedMessage } from 'react-intl'
+import React, { useState, useEffect, useRef } from 'react'
+import { FormattedMessage, useIntl } from 'react-intl'
 
 interface ProjectConfig {
   directory: string
@@ -12,6 +12,9 @@ export function ProjectSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<'saved' | 'error' | null>(null)
+  const [optimizing, setOptimizing] = useState<'goal' | 'description' | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const intl = useIntl()
 
   useEffect(() => {
     fetch('/api/project/config')
@@ -42,6 +45,36 @@ export function ProjectSettings() {
     }
   }
 
+  const handleOptimize = async (field: 'goal' | 'description') => {
+    setOptimizing(field)
+    try {
+      const res = await fetch('/api/project/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, text: config[field] }),
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      setConfig((prev) => ({ ...prev, [field]: data.text }))
+    } catch (err) {
+      console.error('Failed to optimize', err)
+    } finally {
+      setOptimizing(null)
+    }
+  }
+
+  const handleBrowse = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      const path = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : files[0].name
+      setConfig((prev) => ({ ...prev, directory: path }))
+    }
+  }
+
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '6px 10px', background: '#0d1117', color: '#c9d1d9',
     border: '1px solid #30363d', borderRadius: 4, fontSize: 13, boxSizing: 'border-box',
@@ -57,19 +90,54 @@ export function ProjectSettings() {
 
   return (
     <div style={{ padding: 12 }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        webkitdirectory=""
+        style={{ display: 'none' }}
+        onChange={handleFileSelected}
+      />
       <h3 style={{ margin: '0 0 12px', fontSize: 14 }}><FormattedMessage id="projectSettings.title" /></h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <label style={labelStyle}><FormattedMessage id="projectSettings.directory" /></label>
-          <input
-            type="text"
-            value={config.directory}
-            onChange={(e) => setConfig((prev) => ({ ...prev, directory: e.target.value }))}
-            style={inputStyle}
-          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={config.directory}
+              onChange={(e) => setConfig((prev) => ({ ...prev, directory: e.target.value }))}
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <button
+              onClick={handleBrowse}
+              style={{
+                padding: '6px 12px', background: '#21262d', color: '#c9d1d9',
+                border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap',
+              }}
+            >
+              <FormattedMessage id="projectSettings.browse" />
+            </button>
+          </div>
         </div>
         <div>
-          <label style={labelStyle}><FormattedMessage id="projectSettings.goal" /></label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <label style={labelStyle}><FormattedMessage id="projectSettings.goal" /></label>
+            <button
+              onClick={() => handleOptimize('goal')}
+              disabled={optimizing === 'goal' || !config.goal.trim()}
+              style={{
+                padding: '2px 8px', background: '#1f6feb', color: '#fff',
+                border: 'none', borderRadius: 4, cursor: optimizing === 'goal' ? 'not-allowed' : 'pointer',
+                fontSize: 11,
+              }}
+            >
+              {optimizing === 'goal' ? (
+                <FormattedMessage id="projectSettings.optimizing" />
+              ) : (
+                <FormattedMessage id="projectSettings.optimize" />
+              )}
+            </button>
+          </div>
           <textarea
             value={config.goal}
             onChange={(e) => setConfig((prev) => ({ ...prev, goal: e.target.value }))}
@@ -78,7 +146,24 @@ export function ProjectSettings() {
           />
         </div>
         <div>
-          <label style={labelStyle}><FormattedMessage id="projectSettings.description" /></label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <label style={labelStyle}><FormattedMessage id="projectSettings.description" /></label>
+            <button
+              onClick={() => handleOptimize('description')}
+              disabled={optimizing === 'description' || !config.description.trim()}
+              style={{
+                padding: '2px 8px', background: '#1f6feb', color: '#fff',
+                border: 'none', borderRadius: 4, cursor: optimizing === 'description' ? 'not-allowed' : 'pointer',
+                fontSize: 11,
+              }}
+            >
+              {optimizing === 'description' ? (
+                <FormattedMessage id="projectSettings.optimizing" />
+              ) : (
+                <FormattedMessage id="projectSettings.optimize" />
+              )}
+            </button>
+          </div>
           <textarea
             value={config.description}
             onChange={(e) => setConfig((prev) => ({ ...prev, description: e.target.value }))}
