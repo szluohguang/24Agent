@@ -28,6 +28,22 @@ if (-not (Test-Path $ProjectDir)) {
 $env:PORT = $Port
 $env:PERMISSION_LEVEL = $Permission
 
+# 构建
+Write-Host "[orchestrator] 正在构建 WebUI..." -ForegroundColor Yellow
+Push-Location $ProjectDir
+try {
+  $null = npx tsc 2>&1
+  $null = npx vite build src/webui 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Write-Error "构建失败"
+    exit 1
+  }
+  Write-Host "[orchestrator] 构建完成" -ForegroundColor Green
+}
+finally {
+  Pop-Location
+}
+
 # 启动
 Write-Host "[orchestrator] 正在启动..." -ForegroundColor Green
 Write-Host "[orchestrator] 工作目录: $ProjectDir" -ForegroundColor Gray

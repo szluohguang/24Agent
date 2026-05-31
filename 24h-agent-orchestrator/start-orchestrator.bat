@@ -1,7 +1,7 @@
 @echo off
 title 24h Agent Orchestrator
 
-cd /d %~dp0
+pushd %~dp0
 if errorlevel 1 (
     echo [ERROR] Cannot find project directory
     pause
@@ -32,6 +32,16 @@ if not exist node_modules\ (
     echo [orchestrator] Installing dependencies...
     call npm install
 )
+
+echo [orchestrator] Building WebUI...
+call npx tsc >nul 2>&1
+call npx vite build src/webui >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [orchestrator] Build failed, check above errors
+    pause
+    exit /b 1
+)
+echo [orchestrator] Build complete
 
 call npm run dev
 pause
