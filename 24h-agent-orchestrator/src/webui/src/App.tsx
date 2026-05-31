@@ -43,7 +43,7 @@ export function App() {
   const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
   const [healthStale, setHealthStale] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'schedule' | 'history' | 'webhook'>('schedule')
+  const [settingsTab, setSettingsTab] = useState<'schedule' | 'history' | 'webhook' | 'config'>('schedule')
   const [taskInput, setTaskInput] = useState('')
   const [followUpInput, setFollowUpInput] = useState('')
   const [lastUserPrompt, setLastUserPrompt] = useState('')
@@ -314,7 +314,7 @@ export function App() {
               }}>✕</button>
             </div>
             <div style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
-              {(['schedule', 'history', 'webhook'] as const).map((tab) => (
+              {(['schedule', 'history', 'webhook', 'config'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setSettingsTab(tab)}
@@ -329,6 +329,7 @@ export function App() {
                   {tab === 'schedule' && <FormattedMessage id="tab.schedule" />}
                   {tab === 'history' && <FormattedMessage id="history.title" />}
                   {tab === 'webhook' && <FormattedMessage id="webhook.title" />}
+                  {tab === 'config' && <FormattedMessage id="tab.config" />}
                 </button>
               ))}
             </div>
@@ -336,6 +337,55 @@ export function App() {
               {settingsTab === 'schedule' && <ScheduleManager />}
               {settingsTab === 'history' && <HistoryPanel entries={timelineEntries} />}
               {settingsTab === 'webhook' && <WebhookManager />}
+              {settingsTab === 'config' && (
+                <div style={{ padding: 12 }}>
+                  <h3 style={{ margin: '0 0 12px', fontSize: 14 }}><FormattedMessage id="tab.config" /></h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>
+                        <FormattedMessage id="config.budgetLimit" />
+                      </label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="number"
+                          value={budget.limit}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value)
+                            if (!isNaN(v) && v >= 0) {
+                              setBudget((prev) => ({ ...prev, limit: v }))
+                              send({ type: 'set-budget', limit: v })
+                            }
+                          }}
+                          style={{
+                            flex: 1, padding: '6px 10px', background: '#0d1117', color: '#c9d1d9',
+                            border: '1px solid #30363d', borderRadius: 4, fontSize: 13,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: '#8b949e', display: 'block', marginBottom: 4 }}>
+                        <FormattedMessage id="config.spent" />
+                      </label>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: '#d29922', marginBottom: 8 }}>
+                        ¥{budget.spent.toFixed(2)}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setBudget((prev) => ({ ...prev, spent: 0 }))
+                          send({ type: 'reset-budget' })
+                        }}
+                        style={{
+                          padding: '6px 16px', background: '#da3633', color: '#fff',
+                          border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                        }}
+                      >
+                        <FormattedMessage id="config.resetBudget" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

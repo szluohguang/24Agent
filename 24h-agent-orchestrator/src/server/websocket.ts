@@ -94,6 +94,14 @@ async function handleWsMessage(
       orchestrator.deleteSchedule(msg.id as string)
       socket.send(JSON.stringify({ type: 'schedule-deleted', id: msg.id }))
       break
+    case 'set-budget':
+      orchestrator.setBudgetLimit(msg.limit as number)
+      socket.send(JSON.stringify({ type: 'budget-updated', limit: msg.limit }))
+      break
+    case 'reset-budget':
+      orchestrator.resetBudget()
+      socket.send(JSON.stringify({ type: 'budget-reset' }))
+      break
     default:
       socket.send(JSON.stringify({ type: 'error', message: `unknown type: ${msg.type}` }))
   }

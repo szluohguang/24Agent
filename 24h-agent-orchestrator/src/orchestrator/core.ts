@@ -246,6 +246,12 @@ export class Orchestrator {
     this.store.setConfig('budgetLimit', String(limit))
   }
 
+  resetBudget() {
+    this.budgetSpent = 0
+    this.store.setConfig('budgetSpent', '0')
+    this.callbacks.onStateChange()
+  }
+
   setMaxParallel(count: number) {
     this.maxParallel = count
     this.scheduler.setMaxParallel(count)
