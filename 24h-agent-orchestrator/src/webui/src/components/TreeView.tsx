@@ -151,14 +151,13 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     setDragging(true)
-    const startY = e.clientY
     const container = containerRef.current
     if (!container) return
-    const startH = container.getBoundingClientRect().height
+    const rect = container.getBoundingClientRect()
     const controller = new AbortController()
     const handleMouseMove = (ev: MouseEvent) => {
-      const delta = ev.clientY - startY
-      const pct = ((startH / 2 + delta) / startH) * 100
+      const yInContainer = ev.clientY - rect.top
+      const pct = (yInContainer / rect.height) * 100
       setDividerPos(Math.max(20, Math.min(80, pct)))
     }
     const handleMouseUp = () => {
