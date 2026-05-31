@@ -110,6 +110,7 @@
   "chunk.thinking": "Thinking",
   "chunk.toolRunning": "Running...",
   "chunk.toolDone": "Done",
+  "chunk.toolError": "Error",
   "chunk.assistant": "Assistant",
   "chunk.you": "You"
 }

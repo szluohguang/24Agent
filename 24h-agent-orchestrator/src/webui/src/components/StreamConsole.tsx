@@ -15,9 +15,16 @@ const CHUNK_ICONS: Record<string, string> = {
   text: '🤖',
 }
 
+function ts() {
+  return new Date().toLocaleTimeString()
+}
+
+function isErrorContent(content: string): boolean {
+  return /error|fail|exception|traceback|SyntaxError|TypeError|ReferenceError/i.test(content)
+}
+
 function ChunkCard({ chunk }: { chunk: ChunkData }) {
   const [collapsed, setCollapsed] = useState(chunk.type === 'thinking')
-  const intl = useIntl()
 
   if (chunk.type === 'user') {
     return (
@@ -27,6 +34,7 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
           <span style={{ fontSize: 11, color: '#94a3b8' }}>
             <FormattedMessage id="chunk.you" />
           </span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>{ts()}</span>
         </div>
         <div style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
           {chunk.content}
@@ -48,6 +56,7 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
           <span>{collapsed ? '▶' : '▼'}</span>
           <span>{CHUNK_ICONS.thinking}</span>
           <span><FormattedMessage id="chunk.thinking" /></span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>{ts()}</span>
         </div>
         {!collapsed && (
           <div style={{ padding: '8px 12px', fontSize: 12, color: '#8b949e', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
@@ -67,6 +76,7 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
           <span style={{ marginLeft: 'auto', color: '#3fb950', fontSize: 11 }}>
             <FormattedMessage id="chunk.toolRunning" />
           </span>
+          <span style={{ fontSize: 10, color: '#475569' }}>{ts()}</span>
         </div>
         {chunk.content && (
           <div style={{ padding: '6px 12px', fontSize: 12, color: '#8b949e', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
@@ -78,16 +88,18 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
   }
 
   if (chunk.type === 'tool_result') {
+    const isError = chunk.content ? isErrorContent(chunk.content) : false
     return (
-      <div style={{ marginBottom: 8, borderRadius: 8, border: '1px solid #30363d', overflow: 'hidden', background: '#0d1117' }}>
+      <div style={{ marginBottom: 8, borderRadius: 8, border: `1px solid ${isError ? '#f85149' : '#30363d'}`, overflow: 'hidden', background: '#0d1117' }}>
         <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, background: '#161b22', fontSize: 12 }}>
-          <span>{CHUNK_ICONS.tool_result}</span>
-          <span style={{ color: '#3fb950', fontSize: 11 }}>
-            <FormattedMessage id="chunk.toolDone" />
+          <span>{isError ? '❌' : CHUNK_ICONS.tool_result}</span>
+          <span style={{ color: isError ? '#f85149' : '#3fb950', fontSize: 11 }}>
+            <FormattedMessage id={isError ? 'chunk.toolError' : 'chunk.toolDone'} />
           </span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>{ts()}</span>
         </div>
         {chunk.content && (
-          <div style={{ padding: '6px 12px', fontSize: 12, color: '#c9d1d9', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
+          <div style={{ padding: '6px 12px', fontSize: 12, color: isError ? '#f85149' : '#c9d1d9', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>
             {chunk.content}
           </div>
         )}
@@ -102,6 +114,7 @@ function ChunkCard({ chunk }: { chunk: ChunkData }) {
         <span style={{ fontSize: 11, color: '#8b949e' }}>
           <FormattedMessage id="chunk.assistant" />
         </span>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>{ts()}</span>
       </div>
       <div style={{ fontSize: 13, color: '#c9d1d9', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {chunk.content}
@@ -150,7 +163,10 @@ export function StreamConsole({ sessions, sessionChunks, activeSessionId }: Stre
                 [{sid.slice(0, 8)}] {chunkData.taskId}
               </div>
               {chunkData.chunks.map((c, i) => (
-                <ChunkCard key={i} chunk={c} />
+                <React.Fragment key={i}>
+                  {i > 0 && <div style={{ height: 1, background: '#21262d', margin: '4px 0 12px' }} />}
+                  <ChunkCard chunk={c} />
+                </React.Fragment>
               ))}
             </div>
           )
