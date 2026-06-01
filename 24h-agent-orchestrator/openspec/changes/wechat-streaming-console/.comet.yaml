@@ -11,6 +11,8 @@ verification_report: null
 branch_status: pending
 created_at: 2026-06-02
 verified_at: null
+build_command: npx tsc --noEmit
+verify_command: npx tsc --noEmit
 archived: false
 handoff_context: openspec/changes/wechat-streaming-console/.comet/handoff/design-context.json
 handoff_hash: d259f97cff5effaadefc5e248e06f7df99ab52578dc794f67ae7202d9251b7d5
