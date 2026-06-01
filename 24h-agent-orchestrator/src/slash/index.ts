@@ -35,6 +35,37 @@ export class SlashHandler {
           return { handled: true, reply: await this.handleProject(parts.slice(1)) }
         }
 
+        // ── Stream commands ──
+        case 'stream': {
+          const arg = parts[1]?.toLowerCase()
+          const levelNames: Record<string, string> = {
+            off: '关闭，仅在任务完成时发送结果',
+            thinking: '思考过程',
+            full: '全部步骤',
+          }
+
+          if (!arg) {
+            const current = this.orchestrator.getStore().getConfig('wechat_stream_level') || 'thinking'
+            return {
+              handled: true,
+              reply: `📊 当前流式推送级别：**${levelNames[current] || current}**\n\n用法：/stream <off|thinking|full>\n\n- off: 关闭，仅在任务完成时发送结果\n- thinking: 推送思考过程和工具调用\n- full: 推送所有步骤的详细信息`,
+            }
+          }
+
+          if (!['off', 'thinking', 'full'].includes(arg)) {
+            return {
+              handled: true,
+              reply: `❌ 无效参数: ${arg}\n用法：/stream <off|thinking|full>`,
+            }
+          }
+
+          this.orchestrator.getStore().setConfig('wechat_stream_level', arg)
+          return {
+            handled: true,
+            reply: `✅ 流式推送级别已设为：**${levelNames[arg]}**`,
+          }
+        }
+
         default:
           return { handled: true, reply: `未知命令: /${command}\n\n${this.help()}` }
       }
@@ -64,6 +95,7 @@ export class SlashHandler {
       '',
       '❓ **其他**',
       '  `/help` - 显示此帮助',
+      '  `/stream [off|thinking|full]` - 查看/设置流式推送级别',
     ].join('\n')
   }
 
