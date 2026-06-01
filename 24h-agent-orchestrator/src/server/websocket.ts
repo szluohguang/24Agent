@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import type { WebSocket } from 'ws'
 import type { Orchestrator } from '../orchestrator/core.js'
@@ -71,10 +72,23 @@ async function handleWsMessage(
     case 'set-permission':
       orchestrator.setPermissionLevel(msg.level as 'trusted' | 'safe' | 'strict')
       break
-    case 'continue-prompt':
-      await orchestrator.continuePrompt(msg.sessionId as string, msg.prompt as string)
-      socket.send(JSON.stringify({ type: 'follow-up-prompt', sessionId: msg.sessionId, prompt: msg.prompt }))
+    case 'continue-prompt': {
+      const prompt = msg.prompt as string
+      if (prompt.startsWith('/')) {
+        const result = await orchestrator.getSlashHandler().execute(prompt)
+        if (result.handled) {
+          broadcastToClients({
+            type: 'chunk-delta',
+            sessionId: msg.sessionId || 'slash',
+            chunk: { type: 'text', content: `\n${result.reply}\n` },
+          })
+        }
+      } else {
+        await orchestrator.continuePrompt(msg.sessionId as string, prompt)
+        socket.send(JSON.stringify({ type: 'follow-up-prompt', sessionId: msg.sessionId, prompt }))
+      }
       break
+    }
     case 'schedule-task':
       orchestrator.addSchedule(
         msg.description as string,

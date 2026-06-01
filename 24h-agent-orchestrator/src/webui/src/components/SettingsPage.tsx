@@ -4,12 +4,14 @@ import { ScheduleManager } from './ScheduleManager'
 import { HistoryPanel } from './HistoryPanel'
 import { WebhookManager } from './WebhookManager'
 import { ProjectSettings } from './ProjectSettings'
+import { WeChatSettings } from './WeChatSettings'
 import type { TimelineEntryData } from '../types'
 
-type SettingsTab = 'schedule' | 'history' | 'webhook' | 'config' | 'project'
+type SettingsTab = 'schedule' | 'history' | 'webhook' | 'config' | 'project' | 'wechat'
 
 const SIDEBAR_ITEMS: { key: SettingsTab; messageId: string }[] = [
   { key: 'project', messageId: 'projectSettings.title' },
+  { key: 'wechat', messageId: 'wechat.title' },
   { key: 'schedule', messageId: 'tab.schedule' },
   { key: 'history', messageId: 'history.title' },
   { key: 'webhook', messageId: 'webhook.title' },
@@ -109,6 +111,7 @@ export function SettingsPage({ timelineEntries, budget, send, setBudget }: Setti
           </div>
         )}
         {tab === 'project' && <ProjectSettings />}
+        {tab === 'wechat' && <WeChatSettings />}
       </div>
     </div>
   )

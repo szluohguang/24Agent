@@ -151,6 +151,19 @@ function ChunkCard({ chunk, isLastThinking, lastUserPrompt }: { chunk: ChunkData
   )
 }
 
+const SLASH_COMMANDS = [
+  { cmd: '/task create <描述>', desc: '创建任务' },
+  { cmd: '/task list', desc: '列出所有任务' },
+  { cmd: '/task select <id>', desc: '选择当前任务' },
+  { cmd: '/task ask <问题>', desc: '对当前任务追问' },
+  { cmd: '/project goal', desc: '查看项目目标' },
+  { cmd: '/project goal set <文本>', desc: '设置项目目标' },
+  { cmd: '/project desc', desc: '查看项目描述' },
+  { cmd: '/project desc set <文本>', desc: '设置项目描述' },
+  { cmd: '/project progress', desc: '查看项目进度' },
+  { cmd: '/help', desc: '显示帮助' },
+]
+
 export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt, selectedTaskId }: StreamConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const sessionIds = activeSessionId

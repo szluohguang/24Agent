@@ -276,4 +276,76 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
       }
     },
   )
+
+  // ── WeChat Config ──
+
+  app.get('/api/wechat/config', async () => {
+    return orchestrator.getWeChatConfig()
+  })
+
+  app.put<{ Body: { baseUrl?: string; cdnBaseUrl?: string; botType?: string; consoleToWechat?: boolean } }>(
+    '/api/wechat/config',
+    async (request, reply) => {
+      if (!request.body || typeof request.body !== 'object') {
+        return reply.status(400).send({ error: 'Invalid request body' })
+      }
+      orchestrator.updateWeChatConfig(request.body)
+      return { success: true }
+    },
+  )
+
+  app.post('/api/wechat/qrcode', async (request, reply) => {
+    try {
+      const wm = orchestrator.getWeChatManager()
+      const result = await wm.getQrCode()
+      return result
+    } catch (err) {
+      return reply.status(500).send({ error: err instanceof Error ? err.message : 'Get QR code failed' })
+    }
+  })
+
+  app.get<{ Querystring: { qrcode: string } }>(
+    '/api/wechat/qrcode/status',
+    async (request, reply) => {
+      const { qrcode } = request.query
+      if (!qrcode) return reply.status(400).send({ error: 'qrcode query param is required' })
+      try {
+        const wm = orchestrator.getWeChatManager()
+        const result = await wm.checkQrStatus(qrcode)
+        return result
+      } catch (err) {
+        return reply.status(500).send({ error: err instanceof Error ? err.message : 'Check status failed' })
+      }
+    },
+  )
+
+  app.post('/api/wechat/logout', async () => {
+    orchestrator.logoutWeChat()
+    return { success: true }
+  })
+
+  app.get('/api/wechat/login/status', async () => {
+    const wm = orchestrator.getWeChatManager()
+    return {
+      loggedIn: wm.isLoggedIn(),
+      loginInfo: wm.getLoginInfo(),
+    }
+  })
+
+  app.post<{ Body: { text: string } }>(
+    '/api/wechat/test',
+    async (request, reply) => {
+      const { text } = request.body
+      if (!text) return reply.status(400).send({ error: 'text is required' })
+      const wm = orchestrator.getWeChatManager()
+      if (!wm.isLoggedIn()) return reply.status(400).send({ error: 'Not logged in to WeChat' })
+      const targetUserId = wm.getFirstContactUserId() || wm.getLoginInfo()!.userId
+      try {
+        await wm.sendToUser(targetUserId, `[Test] ${text}`)
+        return { success: true, targetUserId }
+      } catch (err) {
+        return reply.status(500).send({ error: err instanceof Error ? err.message : 'Send failed' })
+      }
+    },
+  )
 }

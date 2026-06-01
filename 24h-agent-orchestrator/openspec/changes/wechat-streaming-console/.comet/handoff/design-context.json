@@ -1,0 +1,15 @@
+{
+  "change": "wechat-streaming-console",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "d259f97cff5effaadefc5e248e06f7df99ab52578dc794f67ae7202d9251b7d5",
+  "files": [
+    { "path": "openspec/changes/wechat-streaming-console/proposal.md", "sha256": "75baec6359f4c374bd691e5aeac5bbf65c465491372277a4e3c9af063c05db2d" },
+    { "path": "openspec/changes/wechat-streaming-console/design.md", "sha256": "e82e11bbe98f5f1f7b4fdd9635e1c5effb6d761bc3d941b7c088e618d2a490f5" },
+    { "path": "openspec/changes/wechat-streaming-console/tasks.md", "sha256": "9f0b6bd6c9825f22c86a91118edf5c10a091ca6ccd1ec0a935647cfbc40a9736" },
+    { "path": "openspec/changes/wechat-streaming-console/specs/wechat-slash-stream/spec.md", "sha256": "f58dd2beb04195269f0c70183e4f8ed238f546f33df740f32a6761f1382d93af" },
+    { "path": "openspec/changes/wechat-streaming-console/specs/wechat-streaming/spec.md", "sha256": "0053a2460af6ed5e9231c101b1439baa9fc6886c3210e1364574255cb1eebb44" }
+  ]
+}

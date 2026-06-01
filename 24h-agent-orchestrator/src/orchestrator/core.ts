@@ -10,6 +10,8 @@ import { Scheduler } from './scheduler.js'
 import { Recovery } from './recovery.js'
 import { Logger } from './logger.js'
 import { Notifier, type WebhookConfig } from '../server/notifier.js'
+import { WeChatManager, type WeChatConfig, type WeChatLoginInfo } from '../wechat/manager.js'
+import { SlashHandler } from '../slash/index.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
@@ -55,6 +57,9 @@ export class Orchestrator {
   private recovery: Recovery
   private db: Database.Database
   private notifier: Notifier = new Notifier()
+  private wechatManager: WeChatManager
+  private slashHandler: SlashHandler
+  private storageDir: string
 
   getNotifier(): Notifier {
     return this.notifier
@@ -69,10 +74,11 @@ export class Orchestrator {
     return this.notifier.getWebhooks()
   }
 
-  constructor(client: OpencodeClient, callbacks: OrchestratorCallbacks, database: Database.Database) {
+  constructor(client: OpencodeClient, callbacks: OrchestratorCallbacks, database: Database.Database, storageDir?: string) {
     this.client = client
     this.callbacks = callbacks
     this.db = database
+    this.storageDir = storageDir || path.join(process.cwd(), 'data')
     this.store = new Store(database)
 
     // 从持久化加载配置
@@ -118,7 +124,40 @@ export class Orchestrator {
       },
     )
 
+    const defaultWechatConfig: WeChatConfig = {
+      baseUrl: 'https://ilinkai.weixin.qq.com',
+      cdnBaseUrl: 'https://novac2c.cdn.weixin.qq.com/c2c',
+      botType: '3',
+      consoleToWechat: false,
+    }
+    this.wechatManager = new WeChatManager(defaultWechatConfig, path.join(this.storageDir, 'wechat'), (msg) => {
+      logger.info('wechat', msg)
+    })
+    this.slashHandler = new SlashHandler(this)
+
+    this.loadWeChatConfig()
+
+    this.wechatManager.setOnMessage(async (text, userId) => {
+      const result = await this.slashHandler.execute(text, `wechat:${userId}`)
+      if (result.handled) return result.reply
+
+      const taskId = this.addTask(text)
+      if (this.callbacks.onChunk) {
+        this.callbacks.onChunk('wechat', { type: 'user', content: `📱 [微信] ${text}` })
+        this.callbacks.onChunk('wechat', { type: 'text', content: `任务 **${taskId}** 已创建，处理完成后会自动回复。` })
+      }
+      return `✅ 任务已创建: **${taskId}**，处理完成后会自动回复。`
+    })
+
     this.eventHandlers = this.createEventHandlers()
+  }
+
+  getWeChatManager(): WeChatManager {
+    return this.wechatManager
+  }
+
+  getSlashHandler(): SlashHandler {
+    return this.slashHandler
   }
 
   /** 组装 SSE 事件处理器集合：将事件流路由到 Orchestrator 内部方法和回调 */
@@ -164,8 +203,66 @@ export class Orchestrator {
         if (this.callbacks.onChunk) {
           this.callbacks.onChunk(sessionId, chunk)
         }
+        if (this.wechatManager.isLoggedIn() && this.wechatManager.getConfig().consoleToWechat) {
+          const streamLevel = this.store.getConfig('wechat_stream_level') || 'thinking'
+          if (streamLevel !== 'off') {
+            const userId = this.wechatManager.getFirstContactUserId() || this.wechatManager.getLoginInfo()!.userId
+            this.wechatManager.streamToUser(userId, sessionId, chunk, streamLevel)
+          }
+        }
       },
     }
+  }
+
+  private loadWeChatConfig() {
+    const baseUrl = this.store.getConfig('wechat_baseUrl')
+    const cdnBaseUrl = this.store.getConfig('wechat_cdnBaseUrl')
+    const botType = this.store.getConfig('wechat_botType')
+    const consoleToWechat = this.store.getConfig('wechat_consoleToWechat')
+    const config = this.wechatManager.getConfig()
+    if (baseUrl) config.baseUrl = baseUrl
+    if (cdnBaseUrl) config.cdnBaseUrl = cdnBaseUrl
+    if (botType) config.botType = botType
+    if (consoleToWechat) config.consoleToWechat = consoleToWechat === 'true'
+    this.wechatManager.updateConfig(config)
+
+    const token = this.store.getConfig('wechat_token')
+    const userId = this.store.getConfig('wechat_userId')
+    const accountId = this.store.getConfig('wechat_accountId')
+    if (token && userId && accountId) {
+      this.wechatManager.setLoginFromQr(token!, userId!, accountId!)
+    } else {
+      this.wechatManager.tryRestoreLogin()
+    }
+  }
+
+  getWeChatConfig(): { baseUrl: string; cdnBaseUrl: string; botType: string; consoleToWechat: boolean; loginInfo: WeChatLoginInfo | null } {
+    const c = this.wechatManager.getConfig()
+    return { ...c, loginInfo: this.wechatManager.getLoginInfo() }
+  }
+
+  updateWeChatConfig(config: { baseUrl?: string; cdnBaseUrl?: string; botType?: string; consoleToWechat?: boolean }) {
+    this.wechatManager.updateConfig(config)
+    if (config.baseUrl !== undefined) this.store.setConfig('wechat_baseUrl', config.baseUrl)
+    if (config.cdnBaseUrl !== undefined) this.store.setConfig('wechat_cdnBaseUrl', config.cdnBaseUrl)
+    if (config.botType !== undefined) this.store.setConfig('wechat_botType', config.botType)
+    if (config.consoleToWechat !== undefined) this.store.setConfig('wechat_consoleToWechat', String(config.consoleToWechat))
+  }
+
+  async startWeChatMonitor(): Promise<void> {
+    await this.wechatManager.startMonitor()
+  }
+
+  logoutWeChat(): void {
+    this.wechatManager.logout()
+    this.store.setConfig('wechat_token', '')
+    this.store.setConfig('wechat_userId', '')
+    this.store.setConfig('wechat_accountId', '')
+    this.store.setConfig('wechat_loginAt', '')
+  }
+
+  getStore(): Store {
+    return this.store
   }
 
   /** 从持久化存储中加载配置（权限级别、预算、并行数） */
@@ -215,6 +312,12 @@ export class Orchestrator {
 
     // 启动时恢复未完成任务（pending / running / failed 状态的任务）
     await this.recovery.recoverStartupTasks(async (taskId) => this.dispatchTask(taskId))
+
+    // 如果已有 WeChat 登录态，启动长轮询监听
+    if (this.wechatManager.isLoggedIn()) {
+      this.wechatManager.startMonitor()
+      logger.info('startup', 'WeChat monitor started from saved login')
+    }
 
     this.addTimeline('system', 'system', 'start', 'Orchestrator started')
     logger.info('startup', 'Orchestrator started')
@@ -478,6 +581,19 @@ ${feedbackContext}
         this.addTimeline('sub', sessionId, 'complete',
           `Task completed: ${task.description} (cost: ¥${result.cost.toFixed(4)})`)
         this.notifier.notify('task.completed', { id: task.id, description: task.description, status: 'completed', result: { summary: result.summary, cost: result.cost } })
+
+        await this.wechatManager.finalizeStream(sessionId)
+
+        if (this.wechatManager.isLoggedIn() && this.wechatManager.getConfig().consoleToWechat) {
+          const targetUserId = this.wechatManager.getFirstContactUserId() || this.wechatManager.getLoginInfo()!.userId
+          const summary = result.summary || task.description
+          const chatMsg = [
+            `✅ **任务完成: ${task.description}**`,
+            `费用: ¥${result.cost.toFixed(4)}`,
+            summary.length > 500 ? summary.slice(0, 500) + '...' : summary,
+          ].join('\n\n')
+          this.wechatManager.sendToUser(targetUserId, chatMsg)
+        }
       }
 
       this.callbacks.onStateChange()

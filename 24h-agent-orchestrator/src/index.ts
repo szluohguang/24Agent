@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { createOpencodeServer, freePort } from './orchestrator/acp-manager.js'
 import { Orchestrator } from './orchestrator/core.js'
 import { createHttpServer } from './server/http.js'
@@ -25,9 +26,10 @@ async function main() {
   const { client, server: ocServer } = await createOpencodeServer()
   logger.info('startup', `opencode ACP server: ${ocServer.url}`)
 
+  const storageDir = process.env['STORAGE_DIR'] || path.join(process.cwd(), 'data')
   let orchestrator!: Orchestrator
   const callbacks = createBroadcastCallbacks(() => orchestrator.getState())
-  orchestrator = new Orchestrator(client, callbacks, database)
+  orchestrator = new Orchestrator(client, callbacks, database, storageDir)
   await orchestrator.start()
 
   // 清理 HTTP 服务端口的残留进程（本 orchestrator 独占）
