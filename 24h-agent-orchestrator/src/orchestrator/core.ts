@@ -236,17 +236,18 @@ export class Orchestrator {
     }
   }
 
-  getWeChatConfig(): { baseUrl: string; cdnBaseUrl: string; botType: string; consoleToWechat: boolean; loginInfo: WeChatLoginInfo | null } {
+  getWeChatConfig(): { baseUrl: string; cdnBaseUrl: string; botType: string; consoleToWechat: boolean; streamLevel: string; loginInfo: WeChatLoginInfo | null } {
     const c = this.wechatManager.getConfig()
-    return { ...c, loginInfo: this.wechatManager.getLoginInfo() }
+    return { ...c, streamLevel: this.store.getConfig('wechat_stream_level') || 'thinking', loginInfo: this.wechatManager.getLoginInfo() }
   }
 
-  updateWeChatConfig(config: { baseUrl?: string; cdnBaseUrl?: string; botType?: string; consoleToWechat?: boolean }) {
+  updateWeChatConfig(config: { baseUrl?: string; cdnBaseUrl?: string; botType?: string; consoleToWechat?: boolean; streamLevel?: string }) {
     this.wechatManager.updateConfig(config)
     if (config.baseUrl !== undefined) this.store.setConfig('wechat_baseUrl', config.baseUrl)
     if (config.cdnBaseUrl !== undefined) this.store.setConfig('wechat_cdnBaseUrl', config.cdnBaseUrl)
     if (config.botType !== undefined) this.store.setConfig('wechat_botType', config.botType)
     if (config.consoleToWechat !== undefined) this.store.setConfig('wechat_consoleToWechat', String(config.consoleToWechat))
+    if (config.streamLevel !== undefined) this.store.setConfig('wechat_stream_level', config.streamLevel)
   }
 
   async startWeChatMonitor(): Promise<void> {

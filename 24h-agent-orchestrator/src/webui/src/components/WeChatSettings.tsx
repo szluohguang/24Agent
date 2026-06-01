@@ -13,6 +13,7 @@ interface WechatConfigData {
   cdnBaseUrl: string
   botType: string
   consoleToWechat: boolean
+  streamLevel: string
   loginInfo: WechatLoginInfo | null
 }
 
@@ -22,6 +23,7 @@ export function WeChatSettings() {
     cdnBaseUrl: 'https://novac2c.cdn.weixin.qq.com/c2c',
     botType: '3',
     consoleToWechat: false,
+    streamLevel: 'thinking',
     loginInfo: null,
   })
   const [loading, setLoading] = useState(true)
@@ -62,6 +64,7 @@ export function WeChatSettings() {
           cdnBaseUrl: config.cdnBaseUrl,
           botType: config.botType,
           consoleToWechat: config.consoleToWechat,
+          streamLevel: config.streamLevel,
         }),
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
@@ -340,6 +343,39 @@ export function WeChatSettings() {
           </label>
           <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4, marginLeft: 24 }}>
             <FormattedMessage id="wechat.consoleToWechatDesc" />
+          </div>
+        </div>
+
+        {/* Stream Level Selector */}
+        <div style={{ borderTop: '1px solid #30363d', paddingTop: 12 }}>
+          <label style={{ ...labelStyle, marginBottom: 8 }}>
+            <FormattedMessage id="wechat.streamLevel" />
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              { value: 'off', labelId: 'wechat.streamLevelOff', descId: 'wechat.streamLevelOffDesc' },
+              { value: 'thinking', labelId: 'wechat.streamLevelThinking', descId: 'wechat.streamLevelThinkingDesc' },
+              { value: 'full', labelId: 'wechat.streamLevelFull', descId: 'wechat.streamLevelFullDesc' },
+            ].map((option) => (
+              <label key={option.value} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="streamLevel"
+                  value={option.value}
+                  checked={config.streamLevel === option.value}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, streamLevel: e.target.value }))}
+                  style={{ marginTop: 2, accentColor: '#238636' }}
+                />
+                <div>
+                  <div style={{ fontSize: 13, color: '#c9d1d9' }}>
+                    <FormattedMessage id={option.labelId} />
+                  </div>
+                  <div style={{ fontSize: 11, color: '#8b949e' }}>
+                    <FormattedMessage id={option.descId} />
+                  </div>
+                </div>
+              </label>
+            ))}
           </div>
         </div>
       </div>
