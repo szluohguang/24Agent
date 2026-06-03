@@ -11,7 +11,9 @@ import { HistoryPanel } from './components/HistoryPanel.js'
 import { WebhookManager } from './components/WebhookManager.js'
 import { SettingsPage } from './components/SettingsPage.js'
 import { ProjectDetail } from './components/ProjectDetail.js'
-import type { TaskNode, TimelineEntryData, CometEngineState } from './types.js'
+import { StatusBar } from './components/StatusBar.js'
+import { LogViewer } from './components/LogViewer.js'
+import type { TaskNode, TimelineEntryData, CometEngineState, SystemLogEntry } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
@@ -50,11 +52,16 @@ export function App() {
   const [lastUserPrompt, setLastUserPrompt] = useState('')
   const [budget, setBudget] = useState<{ spent: number; limit: number }>({ spent: 0, limit: 50 })
   const [cometState, setCometState] = useState<CometEngineState | null>(null)
+  const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([])
+  const [showLogViewer, setShowLogViewer] = useState(false)
 
-  // Initial comet status load
+  // Initial data loads
   useEffect(() => {
     fetch('/api/comet/status').then(r => r.json()).then(data => {
       if (data.engineAvailable) setCometState(data.state)
+    }).catch(() => {})
+    fetch('/api/logs').then(r => r.json()).then(data => {
+      if (data.logs) setSystemLogs(data.logs)
     }).catch(() => {})
   }, [])
 
@@ -165,6 +172,11 @@ export function App() {
       case 'comet-state-update': {
         const msg = lastMessage as { type: 'comet-state-update'; state: CometEngineState }
         if (msg.state) setCometState(msg.state)
+        break
+      }
+      case 'system-log': {
+        const msg2 = lastMessage as { type: 'system-log'; entry: SystemLogEntry }
+        if (msg2.entry) setSystemLogs(prev => [...prev, msg2.entry])
         break
       }
       case 'chunk-delta': {
@@ -438,6 +450,19 @@ export function App() {
         />
       ) : (
         <ProjectDetail onNavigate={(p) => setPage(p)} />
+      )}
+      {page === 'home' && (
+        <StatusBar logs={systemLogs} onClick={() => setShowLogViewer(true)} />
+      )}
+      {showLogViewer && (
+        <LogViewer
+          logs={systemLogs}
+          onClose={() => setShowLogViewer(false)}
+          onAcknowledge={(id) => {
+            fetch(`/api/logs/${id}/acknowledge`, { method: 'POST' }).catch(() => {})
+            setSystemLogs(prev => prev.map(e => e.id === id ? { ...e, acknowledged: true } : e))
+          }}
+        />
       )}
     </div>
   )
