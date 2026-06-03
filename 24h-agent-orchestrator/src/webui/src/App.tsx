@@ -448,7 +448,8 @@ export function App() {
           {/* Right column: Health Dashboard (fixed width, right-aligned) */}
         <div style={{
           width: 300, flexShrink: 0,
-          borderLeft: '1px solid #30363d', background: '#0d1117', overflow: 'auto',
+          borderLeft: '1px solid #30363d', background: '#0d1117',
+          display: 'flex', flexDirection: 'column', overflow: 'auto',
         }}>
           <HealthDashboard agents={agents.map((a) => {
             const task = tasks.find((t) => t.id === a.taskId)

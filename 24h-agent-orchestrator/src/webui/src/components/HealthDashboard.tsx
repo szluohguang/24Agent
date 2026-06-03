@@ -58,7 +58,7 @@ export function HealthDashboard({ agents, stale, budget, cometState }: { agents:
   const budgetBar = '█'.repeat(budgetFilled) + '░'.repeat(10 - budgetFilled)
 
   return (
-    <div style={{ opacity: stale ? 0.5 : 1, transition: 'opacity 0.3s', display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ opacity: stale ? 0.5 : 1, transition: 'opacity 0.3s', display: 'flex', flexDirection: 'column', flex: 1 }}>
       {/* Comet 状态 — 置顶 */}
       <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid #30363d' }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#c9d1d9', marginBottom: 6 }}>Comet</div>

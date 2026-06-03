@@ -2,6 +2,8 @@
 comet_change: right-panel-rework
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-03-right-panel-rework
+status: final
 ---
 
 右侧面板布局改为：Comet 置顶 → 预算单行 → Agent 列表（overflow:auto 双滚动）。
