@@ -1,0 +1,3 @@
+- [ ] 1. ProjectSettings.tsx: 用 showDirectoryPicker() 替换 webkitdirectory 方式
+- [ ] 2. 移除旧的 fileInputRef、webkitdirectory input、handleFileSelected
+- [ ] 3. 验证：typed 检查和构建通过

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 
 interface ProjectConfig {
@@ -13,7 +13,6 @@ export function ProjectSettings() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<'saved' | 'error' | null>(null)
   const [optimizing, setOptimizing] = useState<'goal' | 'description' | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const intl = useIntl()
 
   useEffect(() => {
@@ -63,15 +62,12 @@ export function ProjectSettings() {
     }
   }
 
-  const handleBrowse = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files.length > 0) {
-      const path = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : files[0].name
-      setConfig((prev) => ({ ...prev, directory: path }))
+  const handleBrowse = async () => {
+    try {
+      const handle = await window.showDirectoryPicker()
+      setConfig((prev) => ({ ...prev, directory: handle.name }))
+    } catch {
+      // 用户取消选择，不做处理
     }
   }
 
@@ -90,13 +86,6 @@ export function ProjectSettings() {
 
   return (
     <div style={{ padding: 12 }}>
-      <input
-        ref={fileInputRef}
-        type="file"
-        webkitdirectory=""
-        style={{ display: 'none' }}
-        onChange={handleFileSelected}
-      />
       <h3 style={{ margin: '0 0 12px', fontSize: 14 }}><FormattedMessage id="projectSettings.title" /></h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
