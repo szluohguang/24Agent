@@ -467,9 +467,7 @@ export function App() {
       ) : (
         <ProjectDetail onNavigate={(p) => setPage(p)} />
       )}
-      {page === 'home' && (
-        <StatusBar logs={systemLogs} onClick={() => setShowLogViewer(true)} />
-      )}
+      <StatusBar logs={systemLogs} onClick={() => setShowLogViewer(true)} />
       {showLogViewer && (
         <LogViewer
           logs={systemLogs}
