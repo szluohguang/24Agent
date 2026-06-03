@@ -1,3 +1,7 @@
+---
+archived-with: 2026-06-03-wechat-streaming-console
+status: final
+---
 # WeChat 流式推送控制台 — 实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.

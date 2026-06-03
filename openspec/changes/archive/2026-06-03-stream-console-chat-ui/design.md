@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-03-stream-console-chat-ui
+status: final
+status: final
+---
 ## Context
 
 当前 StreamConsole 按 session 逐行追加文本（`session.stream.join('')`），无结构区分。AI 回复中的思考过程、工具调用、最终结果全部混在一起。继续提问的输入框只在选中 running 任务时显示，追问后回复追加到 session.stream 末尾。

@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-03-settings-page-restructure
+status: final
+status: final
+---
 ## Context
 
 当前设置以弹窗（Modal）形式展示，覆盖主内容。项目目录、目标、描述等配置无 UI。项目共享文件（计划/进度）存储位置不明确。

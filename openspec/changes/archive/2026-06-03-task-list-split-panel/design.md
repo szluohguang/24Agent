@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-03-task-list-split-panel
+status: final
+status: final
+---
 ## Context
 
 当前 TreeView 组件将所有任务按创建顺序渲染在一个列表中。需要按状态分区并添加可拖拽分割线。

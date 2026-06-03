@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-03-stream-console-ui-polish
+status: final
+status: final
+---
 ## Context
 
 当前 StreamConsole 的 ChunkCard 中，thinking 卡片默认 collapsed（折叠），用户看不到流式思考过程。用户消息卡片使用 `#1e293b` 背景（深蓝灰），与 AI 回复的 `#161b22` 区别不够明显，且内容左对齐。

@@ -16,6 +16,39 @@ Superpowers 负责 HOW — 技术设计、计划、执行、收尾
 
 ---
 
+## 微信通知集成（WeChat Notification Integration）
+
+如果用户已绑定微信（`comet wechat status --json` 返回 `bound: true`），agent 应在以下场景利用微信通知：
+
+### 发送通知
+到达任一决策点时，在调用 AskUserQuestion 之前执行：
+
+```bash
+# 待处理决策写入本地状态
+node bin/comet.js wechat notify <change-name> "<question>" '<options-json>'
+```
+
+这会持久化待处理决策到 `.comet/wechat/pending.json`，并通过 wechat-acp bridge 向用户推送微信消息。
+
+### 检查微信回复
+每次 `/comet` 启动时（Step 0 之后、Step 1 之前），先执行：
+
+```bash
+node bin/comet.js wechat poll --json
+```
+
+- 如果 `hasReply: true` → 读取 `pending.replyValue`，按微信回复继续流程，然后清除 pending 状态
+- 如果 `hasReply: false` → 正常继续
+
+### 清除待处理状态
+用户在 AskUserQuestion 中直接回复后，执行：
+
+```bash
+rm -f .comet/wechat/pending.json
+```
+
+---
+
 ## 决策核心（Decision Core）
 
 agent 做决策只需读本节，参考附录按需查阅。
@@ -49,6 +82,15 @@ agent 做决策只需读本节，参考附录按需查阅。
 **Step 1: 读取 `.comet.yaml` 状态元数据**
 
 优先读取 `openspec/changes/<name>/.comet.yaml`。不存在时回退到 `openspec status --change "<name>" --json`、`tasks.md` 和 `docs/superpowers/` 文件检查。
+
+**微信待处理回复检查**（Step 1 最先执行）：
+
+```bash
+REPLY=$(node bin/comet.js wechat poll --json 2>/dev/null || echo '{"hasReply":false}')
+```
+
+- 如果 `hasReply: true` → 读取 `pending.replyValue`，根据该值继续对应的流程分支，然后清除 pending（`rm -f .comet/wechat/pending.json`）
+- 跳过当前决策点，直接执行该回复对应的操作
 
 **断点恢复规则**：
 - 每次恢复上下文时，先重新执行 Step 0 和 Step 1，不依赖对话历史判断阶段
@@ -115,6 +157,21 @@ agent 做决策只需读本节，参考附录按需查阅。
 5. finishing-branch 选择分支处理方式
 6. 遇到升级条件（hotfix/tweak → 完整流程）
 7. build 阶段范围扩张需重新设计或拆分新 change
+
+**微信通知前置步骤**：到达以上任一决策点时，在调用 AskUserQuestion 之前执行：
+
+```bash
+# 检查是否已绑定微信
+BINDING=$(node bin/comet.js wechat status --json 2>/dev/null || echo '{"bound":false}')
+```
+
+如果 `bound: true`，先调用通知写入待处理状态：
+
+```bash
+node bin/comet.js wechat notify <change-name> "<question>" '<options-json>'
+```
+
+然后再调用 AskUserQuestion。这样用户在 5 分钟内未回复时，微信端已有完整的决策选项。
 
 agent 不应跳过这些决策点；其他明确无歧义的阶段衔接必须自动继续推进，不得中途退出。到达决策点时，**禁止以文字输出代替工具等待——必须通过 AskUserQuestion 明确获取用户选择后才能继续**。
 

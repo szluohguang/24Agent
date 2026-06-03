@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-03-task-tree-hover-delete-refresh
+status: final
+status: final
+---
 ## Context
 
 当前 TreeView 组件使用 React 内联样式，任务列表项和删除按钮均无鼠标悬停视觉反馈。删除操作通过 WebSocket 发送 `delete-task` 消息，服务端处理后通过 `onStateChange` 广播全量状态更新，但客户端仅对 `state-update` 和 `connected` 消息做全量同步，缺少对 `task-deleted` 消息的处理，导致删除后 UI 不会立即移除该任务节点。

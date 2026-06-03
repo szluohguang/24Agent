@@ -1,18 +1,18 @@
 workflow: full
-phase: verify
+phase: archive
 build_mode: subagent-driven-development
 isolation: branch
 verify_mode: full
 base_ref: 571e947fc517ffcd41fc89959ee67292f127c927
 design_doc: docs/superpowers/specs/2026-06-02-wechat-streaming-console-design.md
 plan: docs/superpowers/plans/2026-06-02-wechat-streaming-console.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-06-02-wechat-streaming-console-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-06-02
-verified_at: null
+verified_at: 2026-06-03
 build_command: npx tsc --noEmit
 verify_command: npx tsc --noEmit
-archived: false
+archived: true
 handoff_context: openspec/changes/wechat-streaming-console/.comet/handoff/design-context.json
 handoff_hash: d259f97cff5effaadefc5e248e06f7df99ab52578dc794f67ae7202d9251b7d5
