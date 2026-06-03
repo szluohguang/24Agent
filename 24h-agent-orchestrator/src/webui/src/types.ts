@@ -57,6 +57,16 @@ export interface CometPhaseStatus {
   progress: number
 }
 
+export interface SystemLogEntry {
+  id: string
+  time: number
+  type: 'info' | 'warning' | 'error'
+  message: string
+  source: string
+  count?: number
+  acknowledged?: boolean
+}
+
 export interface CometEngineState {
   changeName: string
   phase: CometPhase

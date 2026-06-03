@@ -50,6 +50,58 @@ const CORE_TAGS = new Set([
   'fatal',
 ])
 
+export interface SystemLogEntry {
+  id: string
+  time: number
+  type: 'info' | 'warning' | 'error'
+  message: string
+  source: string
+  count?: number
+  acknowledged?: boolean
+}
+
+export class LogBuffer {
+  private maxSize = 500
+  private entries: SystemLogEntry[] = []
+  private lastMerge: Record<string, number> = {}
+
+  push(entry: Omit<SystemLogEntry, 'id' | 'time'>): SystemLogEntry {
+    const key = `${entry.source}:${entry.type}`
+    const now = Date.now()
+    const last = this.lastMerge[key]
+    if (last && now - last < 500) {
+      const existing = this.entries[this.entries.length - 1]
+      if (existing && existing.source === entry.source && existing.type === entry.type) {
+        existing.count = (existing.count || 1) + 1
+        return existing
+      }
+    }
+    this.lastMerge[key] = now
+    const log: SystemLogEntry = {
+      ...entry,
+      id: `log-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      time: now,
+      count: 1,
+    }
+    this.entries.push(log)
+    if (this.entries.length > this.maxSize) this.entries.shift()
+    return log
+  }
+
+  getAll(): SystemLogEntry[] {
+    return [...this.entries]
+  }
+
+  acknowledge(id: string): void {
+    const entry = this.entries.find(e => e.id === id)
+    if (entry) entry.acknowledged = true
+  }
+
+  get hasUnacknowledgedError(): boolean {
+    return this.entries.some(e => e.type === 'error' && !e.acknowledged)
+  }
+}
+
 let globalLogger: Logger | null = null
 
 /**
