@@ -72,9 +72,24 @@ export function App() {
         const res = await fetch('/health')
         if (res.ok) {
           setHealthStale(false)
+        } else {
+          setSystemLogs(prev => [...prev, {
+            id: `log-${Date.now()}`,
+            time: Date.now(),
+            type: 'error',
+            message: `健康检查返回 ${res.status}`,
+            source: 'health',
+          }])
         }
       } catch {
         setHealthStale(true)
+        setSystemLogs(prev => [...prev, {
+          id: `log-${Date.now()}`,
+          time: Date.now(),
+          type: 'error',
+          message: '服务连接中断',
+          source: 'health',
+        }])
       }
     }
     const id = setInterval(poll, 5000)
