@@ -99,73 +99,79 @@ export function HealthDashboard({ agents, stale, tasks, budget, cometState }: { 
           </tbody>
         </table>
       </div>
-      {cometState && (
-        <div style={{ padding: '12px 12px 4px', borderTop: '1px solid #30363d' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#c9d1d9', marginBottom: 8 }}>
-            Comet{' '}
-            <span style={{
-              display: 'inline-block', fontSize: 10, padding: '1px 6px', borderRadius: 8,
-              background: cometState.workflow === 'hotfix' ? '#da3633' : cometState.workflow === 'tweak' ? '#d29922' : '#238636',
-              color: '#fff', verticalAlign: 'middle',
-            }}>
-              {cometState.workflow}
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 6 }}>
-            变更: <span style={{ color: '#c9d1d9' }}>{cometState.changeName}</span>
-          </div>
-          <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 8 }}>
-            阶段:{' '}
-            <span style={{ color: PHASE_COLORS[cometState.phase], fontWeight: 600 }}>{cometState.phase}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 8 }}>
-            {(['open', 'design', 'build', 'verify', 'archive'] as CometPhase[]).map((p, i) => {
-              const ps = cometState.phases[p]
-              const isActive = p === cometState.phase
-              const isCompleted = ps?.status === 'completed'
-              const isPending = ps?.status === 'pending'
-              const dotColor = isCompleted ? '#238636' : isActive ? '#58a6ff' : '#30363d'
-              return (
-                <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                  <span style={{
-                    width: 10, height: 10, borderRadius: '50%', display: 'inline-block',
-                    background: isPending ? 'transparent' : dotColor,
-                    border: isPending ? '2px solid #30363d' : '2px solid ' + dotColor,
-                  }} />
-                  <span style={{ color: isActive || isCompleted ? '#c9d1d9' : '#484f58', fontSize: 11 }}>{p}</span>
-                  {i < 4 && <span style={{ color: '#30363d' }}>●</span>}
-                </span>
-              )
-            })}
-          </div>
-          <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 8 }}>
-            Guard:{' '}
-            <span style={{
-              color: cometState.guardStatus === 'passed' ? '#238636'
-                : cometState.guardStatus === 'failed' ? '#da3633'
-                : cometState.guardStatus === 'running' ? '#58a6ff'
-                : '#484f58',
-              fontWeight: 600,
-            }}>
-              {cometState.guardStatus}
-            </span>
-          </div>
-          {cometState.activeDecision && (
-            <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#d29922', marginBottom: 4 }}>决策等待中</div>
-              <div style={{ fontSize: 12, color: '#c9d1d9', marginBottom: 4 }}>{cometState.activeDecision.prompt}</div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {cometState.activeDecision.options.map((opt) => (
-                  <span key={opt.action} style={{
-                    fontSize: 11, padding: '2px 8px', background: '#0d1117',
-                    border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9',
-                  }}>{opt.label}</span>
-                ))}
-              </div>
-            </div>
-          )}
+      <div style={{ padding: '12px 12px 4px', borderTop: '1px solid #30363d' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#c9d1d9', marginBottom: 8 }}>
+          Comet
         </div>
-      )}
+        {!cometState || cometState.changeName === '(无活跃变更)' ? (
+          <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
+            无活跃变更。使用 /comet 或 /comet-open 开始新工作。
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 6 }}>
+              变更: <span style={{ color: '#c9d1d9' }}>{cometState.changeName}</span>
+              <span style={{
+                display: 'inline-block', fontSize: 10, padding: '1px 6px', borderRadius: 8, marginLeft: 6,
+                background: cometState.workflow === 'hotfix' ? '#da3633' : cometState.workflow === 'tweak' ? '#d29922' : '#238636',
+                color: '#fff', verticalAlign: 'middle',
+              }}>
+                {cometState.workflow}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 8 }}>
+              阶段:{' '}
+              <span style={{ color: PHASE_COLORS[cometState.phase], fontWeight: 600 }}>{cometState.phase}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 8 }}>
+              {( ['open', 'design', 'build', 'verify', 'archive'] as CometPhase[]).map((p, i) => {
+                const ps = cometState.phases[p]
+                const isActive = p === cometState.phase
+                const isCompleted = ps?.status === 'completed'
+                const isPending = ps?.status === 'pending'
+                const dotColor = isCompleted ? '#238636' : isActive ? '#58a6ff' : '#30363d'
+                return (
+                  <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                    <span style={{
+                      width: 10, height: 10, borderRadius: '50%', display: 'inline-block',
+                      background: isPending ? 'transparent' : dotColor,
+                      border: isPending ? '2px solid #30363d' : '2px solid ' + dotColor,
+                    }} />
+                    <span style={{ color: isActive || isCompleted ? '#c9d1d9' : '#484f58', fontSize: 11 }}>{p}</span>
+                    {i < 4 && <span style={{ color: '#30363d' }}>●</span>}
+                  </span>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 8 }}>
+              Guard:{' '}
+              <span style={{
+                color: cometState.guardStatus === 'passed' ? '#238636'
+                  : cometState.guardStatus === 'failed' ? '#da3633'
+                  : cometState.guardStatus === 'running' ? '#58a6ff'
+                  : '#484f58',
+                fontWeight: 600,
+              }}>
+                {cometState.guardStatus}
+              </span>
+            </div>
+            {cometState.activeDecision && (
+              <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: '#d29922', marginBottom: 4 }}>决策等待中</div>
+                <div style={{ fontSize: 12, color: '#c9d1d9', marginBottom: 4 }}>{cometState.activeDecision.prompt}</div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {cometState.activeDecision.options.map((opt) => (
+                    <span key={opt.action} style={{
+                      fontSize: 11, padding: '2px 8px', background: '#0d1117',
+                      border: '1px solid #30363d', borderRadius: 4, color: '#c9d1d9',
+                    }}>{opt.label}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

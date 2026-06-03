@@ -2,6 +2,7 @@
 change: comet-workflow-ui
 design-doc: docs/superpowers/specs/2026-06-03-comet-workflow-ui-design.md
 base-ref: 569fc2b5e18ce105932d31e6cb9ec4b97bbf03e5
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 # Comet Workflow UI Implementation Plan
@@ -14,6 +15,7 @@ base-ref: 569fc2b5e18ce105932d31e6cb9ec4b97bbf03e5
 
 **Tech Stack:** TypeScript, Fastify (API), React 19 (WebUI), child_process (guard execution)
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ## File Structure
@@ -40,6 +42,7 @@ base-ref: 569fc2b5e18ce105932d31e6cb9ec4b97bbf03e5
 - `src/webui/src/components/StreamConsole.tsx` — add decision card rendering
 - `src/webui/src/components/SettingsPage.tsx` — add "Update Plugins" button
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 1: Create comet-orchestration.json
@@ -201,6 +204,7 @@ git add comet-orchestration.json
 git commit -m "feat: add comet orchestration JSON definition"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 2: Implement CometEngine types
@@ -299,6 +303,7 @@ git add src/comet-engine/types.ts
 git commit -m "feat: add CometEngine type definitions"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 3: Implement CometStateMachine
@@ -433,6 +438,7 @@ git add src/comet-engine/state-machine.ts src/comet-engine/__tests__/state-machi
 git commit -m "feat: implement CometStateMachine with double-write validation"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 4: Implement CometGuardScheduler
@@ -531,6 +537,7 @@ git add src/comet-engine/guard-scheduler.ts src/comet-engine/__tests__/guard-sch
 git commit -m "feat: implement CometGuardScheduler with timeout and fallback"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 5: Implement CometOrchestrator
@@ -757,6 +764,7 @@ git add src/comet-engine/orchestrator.ts src/comet-engine/__tests__/orchestrator
 git commit -m "feat: implement CometOrchestrator with transition engine"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 6: Integrate slash commands and API
@@ -870,6 +878,7 @@ git add src/slash/index.ts src/server/api.ts src/server/websocket.ts src/orchest
 git commit -m "feat: integrate comet engine with slash commands and API"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 7: Right panel — Comet status monitoring
@@ -934,6 +943,7 @@ git add src/webui/src/components/HealthDashboard.tsx src/webui/src/App.tsx src/w
 git commit -m "feat: right panel shows comet status with one-line budget"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 8: Left panel — Phase list view
@@ -971,6 +981,7 @@ git add src/webui/src/components/TreeView.tsx src/webui/src/App.tsx
 git commit -m "feat: left panel shows comet phase list view"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 9: Center console — Decision cards
@@ -1040,6 +1051,7 @@ git add src/webui/src/components/StreamConsole.tsx src/webui/src/App.tsx
 git commit -m "feat: center console shows decision cards for comet workflow"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 10: Settings "Update Plugins" button
@@ -1093,6 +1105,7 @@ git add src/webui/src/components/SettingsPage.tsx
 git commit -m "feat: add Update Plugins button to Settings page"
 ```
 
+archived-with: 2026-06-03-comet-workflow-ui
 ---
 
 ### Task 11: Full build and test verification

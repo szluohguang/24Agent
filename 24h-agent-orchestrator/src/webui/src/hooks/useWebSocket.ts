@@ -9,6 +9,7 @@ export type WsMessage =
   | { type: 'health-report'; data: unknown }
   | { type: 'error'; message: string }
   | { type: 'follow-up-prompt'; sessionId: string; prompt: string }
+  | { type: 'comet-state-update'; state: import('../types').CometEngineState }
 
 /**
  * useWebSocket — WebSocket 连接管理 hook。

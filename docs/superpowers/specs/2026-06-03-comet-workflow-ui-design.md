@@ -2,6 +2,8 @@
 comet_change: comet-workflow-ui
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-03-comet-workflow-ui
+status: final
 ---
 
 ## 架构概览

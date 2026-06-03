@@ -354,7 +354,20 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
 
   app.get('/api/comet/status', async () => {
     const engine = (orchestrator as any).cometEngine
-    if (!engine) return { engineAvailable: false }
+    if (!engine) {
+      return {
+        engineAvailable: true,
+        state: {
+          changeName: '(无活跃变更)',
+          phase: 'open' as const,
+          workflow: 'full' as const,
+          phases: {},
+          activeDecision: null,
+          guardStatus: 'idle' as const,
+          guardOutput: null,
+        },
+      }
+    }
     const state = engine.getCurrentState()
     return { engineAvailable: true, state }
   })
