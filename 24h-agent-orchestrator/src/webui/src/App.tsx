@@ -348,6 +348,8 @@ export function App() {
               onDispatch={handleDispatch} onAbort={handleAbort}
               onDelete={handleDelete}
               onSelect={handleSelectTask}
+              cometState={cometState ?? undefined}
+              onPhaseSelect={(phase) => console.log('Phase selected:', phase)}
             />
           </div>
           <form onSubmit={handleSubmitTask} style={{

@@ -18,6 +18,8 @@ interface TreeViewProps {
   onAbort: (taskId: string) => void
   onSelect: (taskId: string) => void
   onDelete: (taskId: string) => void
+  cometState?: import('../types').CometEngineState
+  onPhaseSelect?: (phase: string) => void
 }
 
 const ACTIVE_STATUSES: Set<TaskStatus> = new Set(['pending', 'running', 'awaiting_review', 'queued', 'retrying', 'scheduled'])
@@ -121,7 +123,63 @@ function handleDeleteClick(task: TaskNode, onDelete: (id: string) => void, setCo
   }
 }
 
-export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onDelete, onSelect }: TreeViewProps) {
+function PhaseListPanel({ cometState, onPhaseSelect }: {
+  cometState: import('../types').CometEngineState
+  onPhaseSelect?: (phase: string) => void
+}) {
+  const phaseOrder = ['open', 'design', 'build', 'verify', 'archive']
+  const phaseLabels: Record<string, string> = {
+    open: '开启', design: '深度设计', build: '计划与构建',
+    verify: '验证与收尾', archive: '归档'
+  }
+  const statusColors: Record<string, string> = {
+    completed: '#238636',
+    active: '#58a6ff',
+    pending: '#484f58'
+  }
+  const statusIcons: Record<string, string> = {
+    completed: '✓',
+    active: '●',
+    pending: '○'
+  }
+
+  return (
+    <div style={{ padding: 8 }}>
+      {phaseOrder.map((phase) => {
+        const ps = cometState.phases[phase]
+        const isActive = ps?.status === 'active'
+        const isCompleted = ps?.status === 'completed'
+        const color = statusColors[ps?.status || 'pending']
+        const icon = statusIcons[ps?.status || 'pending']
+        return (
+          <div
+            key={phase}
+            onClick={() => onPhaseSelect?.(phase)}
+            style={{
+              padding: '10px 12px', margin: '4px 0', borderRadius: 6,
+              background: isActive ? '#1c2333' : isCompleted ? '#162216' : '#0d1117',
+              border: `1px solid ${isActive ? '#58a6ff' : '#21262d'}`,
+              cursor: ps?.status !== 'pending' ? 'pointer' : 'default',
+              opacity: ps?.status === 'pending' ? 0.5 : 1,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color, fontWeight: 'bold' }}>{icon}</span>
+              <span style={{ fontWeight: isActive ? 'bold' : 'normal' }}>
+                {phaseLabels[phase] || phase}
+              </span>
+              <span style={{ marginLeft: 'auto', color: '#8b949e', fontSize: 12 }}>
+                {isCompleted ? '✓' : isActive ? `${ps?.progress || 0}%` : ''}
+              </span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onDelete, onSelect, cometState, onPhaseSelect }: TreeViewProps) {
   const intl = useIntl()
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null)
   const [hoveredBtnId, setHoveredBtnId] = useState<string | null>(null)
@@ -166,6 +224,10 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
     }
     window.addEventListener('mousemove', handleMouseMove, { signal: controller.signal })
     window.addEventListener('mouseup', handleMouseUp, { signal: controller.signal })
+  }
+
+  if (cometState) {
+    return <PhaseListPanel cometState={cometState} onPhaseSelect={onPhaseSelect} />
   }
 
   if (tasks.length === 0) {
