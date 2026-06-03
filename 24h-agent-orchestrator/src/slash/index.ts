@@ -218,7 +218,7 @@ export class SlashHandler {
           const config = this.orchestrator.getProjectConfig()
           config.goal = goal
           this.orchestrator.setProjectConfig(config)
-          return `✅ 项目目标已设置:\n   ${goal}`
+          return `✅ 项目目标已设置:\n   ${goal}\n\n💡 **提示**：好的目标应包含"做什么"和"为什么"，例如"构建一个自动化系统，减少人工干预"。`
         }
         const config = this.orchestrator.getProjectConfig()
         return config.goal
@@ -233,7 +233,7 @@ export class SlashHandler {
           const config = this.orchestrator.getProjectConfig()
           config.description = desc
           this.orchestrator.setProjectConfig(config)
-          return `✅ 项目描述已设置:\n   ${desc}`
+          return `✅ 项目描述已设置:\n   ${desc}\n\n💡 **提示**：好的描述应说明项目背景、范围和技术方案，让读者快速理解项目全貌。`
         }
         const config = this.orchestrator.getProjectConfig()
         return config.description

@@ -1,0 +1,14 @@
+{
+  "change": "project-goal-desc-system-prompt",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "d9aefc8c0f416bea799f466669b87cf9f483ed0f2d04cc0e78a5241abef2c339",
+  "files": [
+    { "path": "openspec/changes/project-goal-desc-system-prompt/proposal.md", "sha256": "00594b681413dbff0978c6052bd7aced1fc6ad871e34b4fae054be14efc81a85" },
+    { "path": "openspec/changes/project-goal-desc-system-prompt/design.md", "sha256": "f9282ac1a371184423a205b398c4414cc870666b2f2707b2c7080b3f4224337d" },
+    { "path": "openspec/changes/project-goal-desc-system-prompt/tasks.md", "sha256": "80582acf8e107cfa3632a3d1aa2b863e7a5fc874399add5eefc2de396820be72" },
+    { "path": "openspec/changes/project-goal-desc-system-prompt/specs/project-prompt-hints/spec.md", "sha256": "866adb8bac903ad38652ea94acb75c9ae653bc9dd5e69d809b19266e6b7a748e" }
+  ]
+}

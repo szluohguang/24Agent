@@ -131,6 +131,8 @@
   "projectSettings.saving": "保存中...",
   "projectSettings.saveError": "保存失败",
   "projectSettings.goal": "项目目标",
+  "projectSettings.goalPlaceholder": "例如：构建一个 24/7 自动运行的 Agent 编排系统，支持任务分解、子 Agent 分发、实时监控和自动评估。描述项目的核心目标和预期成果。",
+  "projectSettings.descPlaceholder": "例如：本项目基于 opencode ACP 协议，实现从目标定义 → 任务分解 → 子 Agent 分发 → 实时观测 → 结果评估的自动化闭环。说明项目的背景、范围和技术方案。",
   "projectSettings.description": "项目描述",
   "projectSettings.save": "保存",
   "projectSettings.saved": "已保存",
