@@ -1,17 +1,17 @@
 workflow: full
-phase: archive
+phase: verify
 build_mode: subagent-driven-development
 isolation: branch
 verify_mode: full
 base_ref: 569fc2b5e18ce105932d31e6cb9ec4b97bbf03e5
 design_doc: docs/superpowers/specs/2026-06-03-comet-workflow-ui-design.md
 plan: docs/superpowers/plans/2026-06-03-comet-workflow-ui.md
-verify_result: pass
+verify_result: pending
 verification_report: docs/superpowers/reports/2026-06-03-comet-workflow-ui-verify.md
-branch_status: handled
+branch_status: pending
 created_at: 2026-06-03
-verified_at: 2026-06-03
-archived: true
+verified_at: null
+archived: false
 handoff_context: openspec/changes/comet-workflow-ui/.comet/handoff/design-context.json
 handoff_hash: 245ea392f1cfc1ab73773e4e8618d222c56ab17f3bd5b7dc76c4a967229f931c
 build_command: cd 24h-agent-orchestrator && npm run build

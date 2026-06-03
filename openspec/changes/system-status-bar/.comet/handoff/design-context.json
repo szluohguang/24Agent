@@ -1,0 +1,15 @@
+{
+  "change": "system-status-bar",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "ec02b34acef189a55ea4df0b6132c988f119d41b144a0be5313f3bd1ed8a780b",
+  "files": [
+    { "path": "openspec/changes/system-status-bar/proposal.md", "sha256": "d00f5743d3d6ea2ee6c9d12dcb9ffbe3427e2fda89b12f01c96b1a10b5fccc24" },
+    { "path": "openspec/changes/system-status-bar/design.md", "sha256": "c593fe9663041a8c2b5bb707fd9abc69b90ccc301944489777923216a4976007" },
+    { "path": "openspec/changes/system-status-bar/tasks.md", "sha256": "e4c32273bbaf096ca5a8330e927630851c9468127f253c41acce53619dd9cf84" },
+    { "path": "openspec/changes/system-status-bar/specs/system-log-viewer/spec.md", "sha256": "24ea9c7b45246f72e912f01e157a82e4a732abf39bb1622027dbf52cfe2ae421" },
+    { "path": "openspec/changes/system-status-bar/specs/system-status-bar/spec.md", "sha256": "7a22c6bcaa05d89edaf775fbd96bef5328d115cbe3ca7613acf4c1a3de9a18d8" }
+  ]
+}
