@@ -1,0 +1,17 @@
+workflow: full
+phase: build
+build_mode: direct
+isolation: branch
+verify_mode: null
+base_ref: 471f1b543568cd4f39c449d4141bc931b920ada9
+design_doc: docs/superpowers/specs/2026-06-03-right-panel-rework-design.md
+plan: null
+verify_result: pending
+verification_report: null
+branch_status: pending
+created_at: 2026-06-03
+verified_at: null
+archived: false
+handoff_context: openspec/changes/right-panel-rework/.comet/handoff/design-context.json
+handoff_hash: 9c3dd53b21e04bff59e9db2cabea588896698a8e054d2bbbc40a5cd2a682429e
+direct_override: true

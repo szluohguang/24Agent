@@ -2,6 +2,7 @@
 change: system-status-bar
 design-doc: docs/superpowers/specs/2026-06-03-system-status-bar-design.md
 base-ref: 879a7940b8efc82ff9fad694c9f65138e549cf13
+archived-with: 2026-06-03-system-status-bar
 ---
 
 # System Status Bar Implementation Plan
@@ -14,6 +15,7 @@ base-ref: 879a7940b8efc82ff9fad694c9f65138e549cf13
 
 **Tech Stack:** TypeScript, Fastify, React 19
 
+archived-with: 2026-06-03-system-status-bar
 ---
 
 ### Task 1: Backend types and LogBuffer
@@ -110,6 +112,7 @@ git add src/webui/src/types.ts src/orchestrator/logger.ts
 git commit -m "feat: add SystemLogEntry type and LogBuffer ring cache"
 ```
 
+archived-with: 2026-06-03-system-status-bar
 ---
 
 ### Task 2: API and WebSocket integration
@@ -163,6 +166,7 @@ git add src/server/api.ts src/server/websocket.ts src/webui/src/hooks/useWebSock
 git commit -m "feat: add log API, WS push, and log source collection"
 ```
 
+archived-with: 2026-06-03-system-status-bar
 ---
 
 ### Task 3: StatusBar component
@@ -260,6 +264,7 @@ git add src/webui/src/components/StatusBar.tsx src/webui/src/App.tsx
 git commit -m "feat: add StatusBar component and integrate into App layout"
 ```
 
+archived-with: 2026-06-03-system-status-bar
 ---
 
 ### Task 4: LogViewer component
@@ -392,6 +397,7 @@ git add src/webui/src/components/LogViewer.tsx src/webui/src/App.tsx
 git commit -m "feat: add LogViewer overlay with type filter and error acknowledge"
 ```
 
+archived-with: 2026-06-03-system-status-bar
 ---
 
 ### Task 5: Health polling log source
@@ -431,6 +437,7 @@ git add src/webui/src/App.tsx src/server/api.ts
 git commit -m "feat: add health poll logging and acknowledge API"
 ```
 
+archived-with: 2026-06-03-system-status-bar
 ---
 
 ### Task 6: Build and test verification

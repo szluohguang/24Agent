@@ -453,7 +453,7 @@ export function App() {
           <HealthDashboard agents={agents.map((a) => {
             const task = tasks.find((t) => t.id === a.taskId)
             return { ...a, taskDescription: task?.description }
-          })} stale={healthStale} tasks={{ total: tasks.length, running: tasks.filter((t) => t.status === 'running').length }} budget={budget} cometState={cometState} />
+          })} stale={healthStale} budget={budget} cometState={cometState} />
         </div>
       </div>
       ) : page === 'settings' ? (

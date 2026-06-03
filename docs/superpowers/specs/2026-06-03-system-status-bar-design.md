@@ -2,6 +2,8 @@
 comet_change: system-status-bar
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-03-system-status-bar
+status: final
 ---
 
 ## 架构概览

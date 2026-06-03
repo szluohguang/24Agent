@@ -26,11 +26,11 @@ describe('HealthDashboard', () => {
 
   it('renders stale indicator when data is stale', () => {
     renderWithIntl(<HealthDashboard agents={[]} stale={true} />)
-    expect(screen.getByText(/health\.stale/)).toBeInTheDocument()
+    expect(screen.getByText(/健康数据过期/)).toBeInTheDocument()
   })
 
   it('shows no agents message when list is empty and not stale', () => {
     renderWithIntl(<HealthDashboard agents={[]} stale={false} />)
-    expect(screen.getByText(/health\.noAgents/)).toBeInTheDocument()
+    expect(screen.getByText(/暂无 Agent/)).toBeInTheDocument()
   })
 })

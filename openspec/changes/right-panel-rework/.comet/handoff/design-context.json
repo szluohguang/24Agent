@@ -1,0 +1,13 @@
+{
+  "change": "right-panel-rework",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "9c3dd53b21e04bff59e9db2cabea588896698a8e054d2bbbc40a5cd2a682429e",
+  "files": [
+    { "path": "openspec/changes/right-panel-rework/proposal.md", "sha256": "5eb88ffe5a18352a2a3d460f31b0ed73eff2389029077468c4e61a1627aaaacd" },
+    { "path": "openspec/changes/right-panel-rework/design.md", "sha256": "08fa754da37b9590b11f7947322914f06ba64f5d40469834f9872846fd745fc5" },
+    { "path": "openspec/changes/right-panel-rework/tasks.md", "sha256": "1b27cb2992e99f96fc7ef1493f046f793e69356a5659e77a0df25ea65e2f2fd6" }
+  ]
+}
