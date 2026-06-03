@@ -350,6 +350,20 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     },
   )
 
+  // ── System Logs ──
+
+  app.get('/api/logs', async () => {
+    const buf = (orchestrator as any).logBuffer
+    if (!buf) return { logs: [] }
+    return { logs: buf.getAll() }
+  })
+
+  app.post<{ Params: { id: string } }>('/api/logs/:id/acknowledge', async (request) => {
+    const buf = (orchestrator as any).logBuffer
+    if (buf) buf.acknowledge(request.params.id)
+    return { ok: true }
+  })
+
   // ── Comet Engine ──
 
   app.get('/api/comet/status', async () => {

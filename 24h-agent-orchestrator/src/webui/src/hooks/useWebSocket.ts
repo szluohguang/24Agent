@@ -10,6 +10,7 @@ export type WsMessage =
   | { type: 'error'; message: string }
   | { type: 'follow-up-prompt'; sessionId: string; prompt: string }
   | { type: 'comet-state-update'; state: import('../types').CometEngineState }
+  | { type: 'system-log'; entry: import('../types').SystemLogEntry }
 
 /**
  * useWebSocket — WebSocket 连接管理 hook。

@@ -8,7 +8,7 @@ import { Store } from './store.js'
 import { HealthMonitor } from './health-monitor.js'
 import { Scheduler } from './scheduler.js'
 import { Recovery } from './recovery.js'
-import { Logger } from './logger.js'
+import { Logger, LogBuffer } from './logger.js'
 import { Notifier, type WebhookConfig } from '../server/notifier.js'
 import { WeChatManager, type WeChatConfig, type WeChatLoginInfo } from '../wechat/manager.js'
 import { SlashHandler } from '../slash/index.js'
@@ -62,6 +62,7 @@ export class Orchestrator {
   private slashHandler: SlashHandler
   private storageDir: string
   cometEngine?: CometOrchestrator
+  logBuffer?: LogBuffer
   broadcast?: (data: { type: string; [key: string]: unknown }) => void
 
   getNotifier(): Notifier {
@@ -83,6 +84,9 @@ export class Orchestrator {
     this.db = database
     this.storageDir = storageDir || path.join(process.cwd(), 'data')
     this.store = new Store(database)
+
+    // 日志缓冲区初始化
+    this.logBuffer = new LogBuffer()
 
     // 从持久化加载配置
     this.loadConfig()
@@ -482,6 +486,7 @@ export class Orchestrator {
     if (this.budgetSpent >= this.budgetLimit) {
       this.addTimeline('system', 'system', 'budget-limit',
         `Budget limit reached: ${this.budgetSpent}/${this.budgetLimit}`)
+      this.pushLog('warning', `预算超限: ¥${this.budgetSpent}/${this.budgetLimit}`, 'budget')
       return
     }
 
@@ -668,6 +673,7 @@ ${feedbackContext}
       this.addTimeline('system', sessionId, 'max-retries',
         `Task failed: ${task.description} - max retries exceeded`)
       this.notifier.notify('task.failed', { id: task.id, description: task.description, status: 'failed', error: task.error })
+      this.pushLog('error', `Agent 超过最大重试次数: ${task.description}`, 'agent-dead')
     } else {
       this.store.updateTask(task)
       agent.status = 'error'
@@ -679,6 +685,7 @@ ${feedbackContext}
         { taskId: agent.taskId, retryCount: task.retryCount })
       this.addTimeline('system', sessionId, 'retry',
         `Retrying task: ${task.description} (attempt ${task.retryCount}/${task.maxRetries})`)
+      this.pushLog('warning', `Agent 自动重试: ${task.description} (${task.retryCount}/${task.maxRetries})`, 'agent-retry')
       await this.dispatchTask(task.id)
     }
     this.callbacks.onStateChange()
@@ -712,6 +719,7 @@ ${feedbackContext}
         { sessionId, taskId: agent.taskId, retryCount: task.retryCount })
       this.addTimeline('system', sessionId, 'hung-recovery',
         `Session hung, retrying (${task.retryCount}/${task.maxRetries})`)
+      this.pushLog('warning', `Session 挂起，正在恢复: ${task.description}`, 'agent-hung')
       await this.dispatchTask(task.id)
     } else {
       task.status = 'failed'
@@ -796,6 +804,13 @@ ${feedbackContext}
     this.timeline.push(entry)
     this.store.insertTimelineEntry(entry)
     this.callbacks.onTimeline(entry)
+  }
+
+  private pushLog(type: 'info' | 'warning' | 'error', message: string, source: string): void {
+    const entry = this.logBuffer?.push({ type, message, source })
+    if (entry) {
+      this.broadcast?.({ type: 'system-log', entry })
+    }
   }
 
   // ── Schedule management ──
