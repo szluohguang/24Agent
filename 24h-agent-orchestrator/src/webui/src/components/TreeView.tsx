@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react'
+import React, { useRef, useState, useMemo } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
-import type { TaskNode, TaskStatus } from '../types.js'
+import type { TaskNode, TaskStatus, CometEngineState } from '../types.js'
 
 interface AgentInfo {
   sessionId: string
@@ -18,8 +18,7 @@ interface TreeViewProps {
   onAbort: (taskId: string) => void
   onSelect: (taskId: string) => void
   onDelete: (taskId: string) => void
-  cometState?: import('../types').CometEngineState
-  onPhaseSelect?: (phase: string) => void
+  cometState?: CometEngineState
 }
 
 const ACTIVE_STATUSES: Set<TaskStatus> = new Set(['pending', 'running', 'awaiting_review', 'queued', 'retrying', 'scheduled'])
@@ -35,18 +34,60 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
   scheduled: '#d29922', queued: '#8b949e', retrying: '#f0883e', awaiting_review: '#d29922', rejected: '#f85149',
 }
 
+const PHASE_ORDER = ['open', 'design', 'build', 'verify', 'archive'] as const
+const PHASE_LABELS: Record<string, string> = {
+  open: '开启', design: '深度设计', build: '计划与构建',
+  verify: '验证与收尾', archive: '归档',
+}
+const PHASE_STATUS_COLORS: Record<string, string> = { completed: '#238636', active: '#58a6ff', pending: '#484f58' }
+const PHASE_STATUS_ICONS: Record<string, string> = { completed: '✓', active: '●', pending: '○' }
+
 const DIALOG_OVERLAY: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const DIALOG_BOX: React.CSSProperties = { background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: 24, maxWidth: 420 }
 
 const btnBase = { padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 } as const
-const dispatchBtnStyle: React.CSSProperties = { ...btnBase, background: '#238636', color: '#fff' }
-const abortBtnStyle: React.CSSProperties = { ...btnBase, background: '#da3633', color: '#fff' }
+const dispatchBtnStyle: React.CSSProperties = { ...btnBase, background: '#238636', color: '#fff', border: 'none' }
+const abortBtnStyle: React.CSSProperties = { ...btnBase, background: '#da3633', color: '#fff', border: 'none' }
 const deleteBtnStyle: React.CSSProperties = { ...btnBase, background: '#484f58', color: '#8b949e', border: '1px solid #30363d' }
 
-function TaskItem({ task, agent, isSelected, isHovered, onSelect, onDispatch, onAbort, onDelete, hoveredBtnId, setHoveredBtnId, setConfirmDeleteId, children }: {
+function handleDeleteClick(task: TaskNode, onDelete: (id: string) => void, setConfirmDeleteId: (id: string | null) => void) {
+  if (task.status === 'running') {
+    setConfirmDeleteId(task.id)
+  } else {
+    onDelete(task.id)
+  }
+}
+
+function phaseBg(status?: string, isActive?: boolean): string {
+  if (status === 'active') return '#1c2333'
+  if (status === 'completed') return '#162216'
+  return '#0d1117'
+}
+
+function AgentItem({ agent }: { agent: AgentInfo }) {
+  const color = agent.healthStatus === 'healthy' ? '#3fb950' : agent.healthStatus === 'dead' ? '#f85149' : '#d29922'
+  const icon = agent.healthStatus === 'healthy' ? '✓' : agent.healthStatus === 'suspected' ? '?' : agent.healthStatus === 'hung' ? '☉' : '✗'
+  return (
+    <div style={{
+      padding: '4px 10px 4px 16px', margin: '2px 0 2px 20px', borderRadius: 4,
+      background: '#0d1117', border: '1px solid #21262d', fontSize: 12,
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      <span style={{ color, fontWeight: 'bold' }}>⊞</span>
+      <span style={{ fontFamily: 'monospace', color: '#8b949e' }}>[{agent.sessionId.slice(0, 8)}]</span>
+      <span style={{ color }}>{icon} {agent.healthStatus}</span>
+      <span style={{ marginLeft: 'auto', color: '#484f58', fontSize: 11 }}>
+        {new Date(agent.startTime).toLocaleTimeString()}
+      </span>
+    </div>
+  )
+}
+
+function TaskItem({ task, agent, isSelected, isHovered, onSelect, onDispatch, onAbort, onDelete, hoveredBtnId, setHoveredBtnId, setConfirmDeleteId, hasAgents, showAgents, onToggleAgents, children }: {
   task: TaskNode; agent?: AgentInfo; isSelected: boolean; isHovered: boolean
   onSelect: (id: string) => void; onDispatch: (id: string) => void; onAbort: (id: string) => void; onDelete: (id: string) => void
-  hoveredBtnId: string | null; setHoveredBtnId: (id: string | null) => void; setConfirmDeleteId: (id: string | null) => void; children?: React.ReactNode
+  hoveredBtnId: string | null; setHoveredBtnId: (id: string | null) => void; setConfirmDeleteId: (id: string | null) => void
+  hasAgents: boolean; showAgents: boolean; onToggleAgents: () => void; children?: React.ReactNode
 }) {
   const intl = useIntl()
   const dId = `dispatch-${task.id}`
@@ -109,102 +150,299 @@ function TaskItem({ task, agent, isSelected, isHovered, onSelect, onDispatch, on
             <FormattedMessage id="treeview.depends" values={{ tasks: task.dependsOn.join(', ') }} />
           </div>
         )}
+        {hasAgents && (
+          <div style={{ marginTop: 4 }}>
+            <span onClick={(e) => { e.stopPropagation(); onToggleAgents() }}
+              style={{ fontSize: 11, color: '#58a6ff', cursor: 'pointer', userSelect: 'none' }}>
+              {showAgents ? '▼ 收起子 Agent' : `▶ ${children ? React.Children.count(children) : 0} 个子 Agent`}
+            </span>
+          </div>
+        )}
       </div>
-      {children}
+      {hasAgents && showAgents && children}
     </div>
   )
 }
 
-function handleDeleteClick(task: TaskNode, onDelete: (id: string) => void, setConfirmDeleteId: (id: string | null) => void) {
-  if (task.status === 'running') {
-    setConfirmDeleteId(task.id)
-  } else {
-    onDelete(task.id)
+function ChangeRootNode({ cometState, children }: { cometState: CometEngineState; children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(true)
+
+  const workflowLabels: Record<string, string> = {
+    full: '完整流程',
+    hotfix: 'hotfix',
+    tweak: 'tweak',
   }
+
+  const currentPhase = cometState.phase
+  const phaseLabel = PHASE_LABELS[currentPhase] || currentPhase
+  const workflowLabel = workflowLabels[cometState.workflow] || cometState.workflow
+  const phaseStatus = cometState.phases[currentPhase]
+  const isPhaseActive = phaseStatus?.status === 'active'
+  const progress = phaseStatus?.progress ?? 0
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          padding: '10px 12px',
+          borderRadius: 8,
+          background: '#1c2333',
+          border: '1px solid #d29922',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#c9d1d9', fontWeight: 'bold', fontSize: 13 }}>
+            {expanded ? '▼' : '▶'}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#c9d1d9' }}>
+            {cometState.changeName}
+          </span>
+          <span style={{
+            fontSize: 11,
+            background: '#0d1117',
+            border: '1px solid #30363d',
+            borderRadius: 10,
+            padding: '2px 8px',
+            color: '#8b949e',
+          }}>
+            {phaseLabel} · {workflowLabel}
+          </span>
+          {isPhaseActive && (
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#58a6ff' }}>
+              {progress}%
+            </span>
+          )}
+        </div>
+      </div>
+      {expanded && (
+        <div style={{
+          padding: '2px 0 2px 8px',
+          borderLeft: '2px solid #d29922',
+          marginLeft: 6,
+          marginTop: 2,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
 }
 
-function PhaseListPanel({ cometState, onPhaseSelect }: {
-  cometState: import('../types').CometEngineState
-  onPhaseSelect?: (phase: string) => void
+function PhaseNode({ phase, state, tasks, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete, hoveredBtnId, setHoveredBtnId, confirmDeleteId, setConfirmDeleteId }: {
+  phase: string; state: { status: string; progress: number } | undefined
+  tasks: TaskNode[]; agents: AgentInfo[]; selectedTaskId?: string
+  onDispatch: (id: string) => void; onAbort: (id: string) => void; onSelect: (id: string) => void; onDelete: (id: string) => void
+  hoveredBtnId: string | null; setHoveredBtnId: (id: string | null) => void
+  confirmDeleteId: string | null; setConfirmDeleteId: (id: string | null) => void
 }) {
-  const phaseOrder = ['open', 'design', 'build', 'verify', 'archive']
-  const phaseLabels: Record<string, string> = {
-    open: '开启', design: '深度设计', build: '计划与构建',
-    verify: '验证与收尾', archive: '归档'
-  }
-  const statusColors: Record<string, string> = {
-    completed: '#238636',
-    active: '#58a6ff',
-    pending: '#484f58'
-  }
-  const statusIcons: Record<string, string> = {
-    completed: '✓',
-    active: '●',
-    pending: '○'
+  const [expanded, setExpanded] = useState(true)
+  const [expandedAgentTasks, setExpandedAgentTasks] = useState<Set<string>>(new Set())
+  const ps = state
+  const isActive = ps?.status === 'active'
+  const isCompleted = ps?.status === 'completed'
+  const color = PHASE_STATUS_COLORS[ps?.status || 'pending']
+  const icon = PHASE_STATUS_ICONS[ps?.status || 'pending']
+
+  const activeTs = tasks.filter(t => ACTIVE_STATUSES.has(t.status) || t.status === 'pending')
+  const completedTs = tasks.filter(t => COMPLETED_STATUSES.has(t.status))
+
+  const hasContent = tasks.length > 0
+
+  const toggleAgent = (taskId: string) => {
+    setExpandedAgentTasks(prev => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
   }
 
   return (
-    <div style={{ padding: 8 }}>
-      {phaseOrder.map((phase) => {
-        const ps = cometState.phases[phase]
-        const isActive = ps?.status === 'active'
-        const isCompleted = ps?.status === 'completed'
-        const color = statusColors[ps?.status || 'pending']
-        const icon = statusIcons[ps?.status || 'pending']
-        return (
-          <div
-            key={phase}
-            onClick={() => onPhaseSelect?.(phase)}
-            style={{
-              padding: '10px 12px', margin: '4px 0', borderRadius: 6,
-              background: isActive ? '#1c2333' : isCompleted ? '#162216' : '#0d1117',
-              border: `1px solid ${isActive ? '#58a6ff' : '#21262d'}`,
-              cursor: ps?.status !== 'pending' ? 'pointer' : 'default',
-              opacity: ps?.status === 'pending' ? 0.5 : 1,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color, fontWeight: 'bold' }}>{icon}</span>
-              <span style={{ fontWeight: isActive ? 'bold' : 'normal' }}>
-                {phaseLabels[phase] || phase}
-              </span>
-              <span style={{ marginLeft: 'auto', color: '#8b949e', fontSize: 12 }}>
-                {isCompleted ? '✓' : isActive ? `${ps?.progress || 0}%` : ''}
-              </span>
-            </div>
-          </div>
-        )
-      })}
+    <div style={{ marginBottom: 4 }}>
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          padding: '10px 12px', borderRadius: 6,
+          background: isActive ? '#1c2333' : isCompleted ? '#162216' : '#0d1117',
+          border: `1px solid ${isActive ? '#58a6ff' : '#21262d'}`,
+          cursor: 'pointer', userSelect: 'none',
+          opacity: ps?.status === 'pending' ? 0.5 : 1,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color, fontWeight: 'bold', fontSize: 13 }}>{expanded ? '▼' : '▶'}</span>
+          <span style={{ color, fontWeight: 'bold', fontSize: 14 }}>{icon}</span>
+          <span style={{ fontWeight: isActive ? 'bold' : 'normal', fontSize: 13, color: '#c9d1d9' }}>
+            {PHASE_LABELS[phase] || phase}
+          </span>
+          {hasContent && (
+            <span style={{ marginLeft: 4, fontSize: 11, color: '#8b949e' }}>
+              ({activeTs.length + completedTs.length})
+            </span>
+          )}
+          <span style={{ marginLeft: 'auto', color: '#8b949e', fontSize: 12 }}>
+            {isCompleted ? '已完成' : isActive ? `${ps?.progress || 0}%` : ''}
+          </span>
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: '4px 0 4px 12px', borderLeft: '1px solid #21262d', marginLeft: 6, marginTop: 2 }}>
+          {activeTs.length > 0 && (
+            <>
+              <div style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, color: '#58a6ff' }}>
+                进行中 ({activeTs.length})
+              </div>
+              {activeTs.map(t => renderTaskNode(t, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete, hoveredBtnId, setHoveredBtnId, confirmDeleteId, setConfirmDeleteId, expandedAgentTasks, toggleAgent))}
+            </>
+          )}
+          {completedTs.length > 0 && (
+            <>
+              <div style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, color: '#8b949e', marginTop: 4 }}>
+                已完成 ({completedTs.length})
+              </div>
+              {completedTs.map(t => renderTaskNode(t, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete, hoveredBtnId, setHoveredBtnId, confirmDeleteId, setConfirmDeleteId, expandedAgentTasks, toggleAgent))}
+            </>
+          )}
+          {!hasContent && (
+            <div style={{ padding: '8px', fontSize: 12, color: '#484f58' }}>暂无任务</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onDelete, onSelect, cometState, onPhaseSelect }: TreeViewProps) {
+function renderTaskNode(
+  task: TaskNode, agents: AgentInfo[], selectedTaskId?: string,
+  onDispatch: (id: string) => void, onAbort: (id: string) => void,
+  onSelect: (id: string) => void, onDelete: (id: string) => void,
+  hoveredBtnId: string | null, setHoveredBtnId: (id: string | null) => void,
+  confirmDeleteId: string | null, setConfirmDeleteId: (id: string | null) => void,
+  expandedAgentTasks: Set<string>, toggleAgent: (taskId: string) => void,
+) {
+  const taskAgents = agents.filter(a => a.taskId === task.id)
+  const hasAgents = taskAgents.length > 0
+  const showAgents = expandedAgentTasks.has(task.id)
+
+  return (
+    <TaskItem key={task.id} task={task}
+      agent={task.sessionId ? agents.find(a => a.sessionId === task.sessionId) : undefined}
+      isSelected={task.id === selectedTaskId} isHovered={false}
+      onSelect={onSelect} onDispatch={onDispatch} onAbort={onAbort} onDelete={onDelete}
+      hoveredBtnId={hoveredBtnId} setHoveredBtnId={setHoveredBtnId} setConfirmDeleteId={setConfirmDeleteId}
+      hasAgents={hasAgents} showAgents={showAgents} onToggleAgents={() => toggleAgent(task.id)}
+    >
+      {hasAgents && showAgents && taskAgents.map(a => (
+        <AgentItem key={a.sessionId} agent={a} />
+      ))}
+    </TaskItem>
+  )
+}
+
+function renderFlatTask(
+  task: TaskNode, agents: AgentInfo[], selectedTaskId?: string,
+  onDispatch: (id: string) => void, onAbort: (id: string) => void,
+  onSelect: (id: string) => void, onDelete: (id: string) => void,
+  hoveredBtnId: string | null, setHoveredBtnId: (id: string | null) => void,
+  setConfirmDeleteId: (id: string | null) => void, expandedAgentTasks: Set<string>, toggleAgent: (taskId: string) => void,
+) {
+  const agent = task.sessionId ? agents.find(a => a.sessionId === task.sessionId) : undefined
+  const taskAgents = agents.filter(a => a.taskId === task.id && a.sessionId !== task.sessionId)
+  const hasAgents = taskAgents.length > 0
+  const showAgents = expandedAgentTasks.has(task.id)
+
+  return (
+    <TaskItem key={task.id} task={task}
+      agent={agent}
+      isSelected={task.id === selectedTaskId} isHovered={false}
+      onSelect={onSelect} onDispatch={onDispatch} onAbort={onAbort} onDelete={onDelete}
+      hoveredBtnId={hoveredBtnId} setHoveredBtnId={setHoveredBtnId} setConfirmDeleteId={setConfirmDeleteId}
+      hasAgents={hasAgents} showAgents={showAgents} onToggleAgents={() => toggleAgent(task.id)}
+    >
+      {hasAgents && showAgents && taskAgents.map(a => (
+        <AgentItem key={a.sessionId} agent={a} />
+      ))}
+    </TaskItem>
+  )
+}
+
+export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onDelete, onSelect, cometState }: TreeViewProps) {
   const intl = useIntl()
-  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null)
   const [hoveredBtnId, setHoveredBtnId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [expandedAgentTasks, setExpandedAgentTasks] = useState<Set<string>>(new Set())
   const [dividerPos, setDividerPos] = useState(50)
   const [dragging, setDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
 
-  const isRunning = confirmDeleteId ? tasks.find(t => t.id === confirmDeleteId)?.status === 'running' : false
-
-  const childMap = useMemo(() => {
-    const map = new Map<string, TaskNode[]>()
-    for (const t of tasks) {
-      for (const dep of t.dependsOn) {
-        const list = map.get(dep) || []
-        list.push(t)
-        map.set(dep, list)
-      }
-    }
-    return map
-  }, [tasks])
+  const toggleAgent = (taskId: string) => {
+    setExpandedAgentTasks(prev => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
+  }
 
   const activeTasks = useMemo(() => tasks.filter(t => ACTIVE_STATUSES.has(t.status)), [tasks])
   const completedTasks = useMemo(() => tasks.filter(t => COMPLETED_STATUSES.has(t.status)), [tasks])
+
+  if (cometState) {
+    const phaseTasks = (phase: string) =>
+      tasks.filter(t => t.cometPhase === phase || t.description.toLowerCase().includes(`[${phase}]`))
+
+    return (
+      <div style={{ padding: 8, overflow: 'auto', height: '100%' }}>
+        {confirmDeleteId && (
+          <div style={DIALOG_OVERLAY} onClick={() => setConfirmDeleteId(null)}>
+            <div style={DIALOG_BOX} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 14, color: '#c9d1d9', marginBottom: 16 }}>
+                <FormattedMessage id="dialog.confirmDeleteRunning" />
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '6px 16px', background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                  <FormattedMessage id="dialog.cancel" />
+                </button>
+                <button onClick={() => { const r = confirmDeleteId; const t = tasks.find(t2 => t2.id === r); if (r && t?.status === 'running') onAbort(r); if (r) onDelete(r); setConfirmDeleteId(null) }}
+                  style={{ padding: '6px 16px', background: '#da3633', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                  <FormattedMessage id="dialog.confirm" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <ChangeRootNode cometState={cometState}>
+          {PHASE_ORDER.map(phase => (
+            <PhaseNode key={phase} phase={phase} state={cometState.phases[phase]}
+              tasks={phaseTasks(phase)} agents={agents}
+              selectedTaskId={selectedTaskId}
+              onDispatch={onDispatch} onAbort={onAbort} onSelect={onSelect} onDelete={onDelete}
+              hoveredBtnId={hoveredBtnId} setHoveredBtnId={setHoveredBtnId}
+              confirmDeleteId={confirmDeleteId} setConfirmDeleteId={setConfirmDeleteId}
+            />
+          ))}
+          {(() => {
+            const unassigned = tasks.filter(t => !t.cometPhase && !PHASE_ORDER.some(p => t.description.toLowerCase().includes(`[${p}]`)))
+            if (unassigned.length === 0) return null
+            return (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ padding: '10px 12px', borderRadius: 6, background: '#0d1117', border: '1px solid #21262d', opacity: 0.7 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#8b949e', fontWeight: 'bold', fontSize: 13 }}>○</span>
+                    <span style={{ fontSize: 13, color: '#8b949e' }}>其他任务</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#484f58' }}>({unassigned.length})</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </ChangeRootNode>
+      </div>
+    )
+  }
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -226,45 +464,8 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
     window.addEventListener('mouseup', handleMouseUp, { signal: controller.signal })
   }
 
-  if (cometState) {
-    return <PhaseListPanel cometState={cometState} onPhaseSelect={onPhaseSelect} />
-  }
-
   if (tasks.length === 0) {
     return <div style={{ padding: 16, color: '#8b949e' }}><FormattedMessage id="app.noTasks" /></div>
-  }
-
-  const renderTask = (task: TaskNode, indent = 0) => {
-    const agent = task.sessionId ? agents.find(a => a.sessionId === task.sessionId) : undefined
-    const isSelected = task.id === selectedTaskId
-    const isHovered = task.id === hoveredTaskId
-    const hasChildren = childMap.has(task.id)
-    const isExpanded = expandedParents.has(task.id)
-    const children = hasChildren ? childMap.get(task.id)! : []
-
-    return (
-      <div key={task.id} style={{ marginLeft: indent * 16 }}>
-        <TaskItem task={task} agent={agent} isSelected={isSelected} isHovered={isHovered}
-          onSelect={onSelect} onDispatch={onDispatch} onAbort={onAbort} onDelete={onDelete}
-          hoveredBtnId={hoveredBtnId} setHoveredBtnId={setHoveredBtnId} setConfirmDeleteId={setConfirmDeleteId}>
-          {hasChildren && (
-            <div style={{ marginTop: 2 }}>
-              <span onClick={() => {
-                setExpandedParents(prev => {
-                  const next = new Set(prev)
-                  if (next.has(task.id)) next.delete(task.id)
-                  else next.add(task.id)
-                  return next
-                })
-              }} style={{ fontSize: 11, color: '#58a6ff', cursor: 'pointer', userSelect: 'none' }}>
-                {isExpanded ? '▼ 收起子任务' : `▶ ${children.length} 个子任务`}
-              </span>
-            </div>
-          )}
-        </TaskItem>
-        {hasChildren && isExpanded && children.map(c => renderTask(c, indent + 1))}
-      </div>
-    )
   }
 
   return (
@@ -279,7 +480,7 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
               <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '6px 16px', background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
                 <FormattedMessage id="dialog.cancel" />
               </button>
-              <button onClick={() => { if (isRunning && confirmDeleteId) onAbort(confirmDeleteId); if (confirmDeleteId) onDelete(confirmDeleteId); setConfirmDeleteId(null) }}
+              <button onClick={() => { if (confirmDeleteId) { const t = tasks.find(t2 => t2.id === confirmDeleteId); if (t?.status === 'running') onAbort(confirmDeleteId); onDelete(confirmDeleteId) } setConfirmDeleteId(null) }}
                 style={{ padding: '6px 16px', background: '#da3633', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
                 <FormattedMessage id="dialog.confirm" />
               </button>
@@ -288,7 +489,6 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
         </div>
       )}
 
-      {/* 进行中 */}
       <div style={{ flex: `${dividerPos}`, overflow: 'auto', minHeight: 60 }}>
         <div style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#58a6ff', borderBottom: '1px solid #21262d' }}>
           <FormattedMessage id="treeview.active" />
@@ -296,20 +496,14 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
         {activeTasks.length === 0 ? (
           <div style={{ padding: 16, color: '#8b949e', fontSize: 12 }}><FormattedMessage id="treeview.noActive" /></div>
         ) : (
-          <div style={{ padding: 8 }}>{activeTasks.map(t => renderTask(t))}</div>
+          <div style={{ padding: 8 }}>
+            {activeTasks.map(t => renderFlatTask(t, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete, hoveredBtnId, setHoveredBtnId, setConfirmDeleteId, expandedAgentTasks, toggleAgent))}
+          </div>
         )}
       </div>
 
-      {/* 拖拽分割线 */}
-      <div
-        onMouseDown={handleMouseDown}
-        style={{
-          height: 4, cursor: dragging ? 'grabbing' : 'grab', background: dragging ? '#58a6ff' : '#30363d',
-          flexShrink: 0, transition: dragging ? 'none' : 'background 0.15s', userSelect: 'none',
-        }}
-      />
+      <div onMouseDown={handleMouseDown} style={{ height: 4, cursor: dragging ? 'grabbing' : 'grab', background: dragging ? '#58a6ff' : '#30363d', flexShrink: 0, transition: dragging ? 'none' : 'background 0.15s', userSelect: 'none' }} />
 
-      {/* 已结束 */}
       <div style={{ flex: `${100 - dividerPos}`, overflow: 'auto', minHeight: 60 }}>
         <div style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#8b949e', borderBottom: '1px solid #21262d' }}>
           <FormattedMessage id="treeview.completed" />
@@ -317,7 +511,9 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
         {completedTasks.length === 0 ? (
           <div style={{ padding: 16, color: '#8b949e', fontSize: 12 }}><FormattedMessage id="treeview.noCompleted" /></div>
         ) : (
-          <div style={{ padding: 8 }}>{completedTasks.map(t => renderTask(t))}</div>
+          <div style={{ padding: 8 }}>
+            {completedTasks.map(t => renderFlatTask(t, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete, hoveredBtnId, setHoveredBtnId, setConfirmDeleteId, expandedAgentTasks, toggleAgent))}
+          </div>
         )}
       </div>
     </div>

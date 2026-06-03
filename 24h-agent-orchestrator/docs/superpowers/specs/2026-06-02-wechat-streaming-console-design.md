@@ -2,7 +2,7 @@
 comet_change: wechat-streaming-console
 role: technical-design
 canonical_spec: openspec
-archived-with: 2026-06-03-wechat-streaming-console
+archived-with: 2026-06-02-wechat-streaming-console
 status: final
 ---
 

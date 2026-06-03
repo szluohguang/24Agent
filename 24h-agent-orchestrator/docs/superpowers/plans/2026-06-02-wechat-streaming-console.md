@@ -1,5 +1,5 @@
 ---
-archived-with: 2026-06-03-wechat-streaming-console
+archived-with: 2026-06-02-wechat-streaming-console
 status: final
 ---
 # WeChat 流式推送控制台 — 实施计划
