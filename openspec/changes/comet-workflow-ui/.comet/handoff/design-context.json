@@ -1,0 +1,17 @@
+{
+  "change": "comet-workflow-ui",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "245ea392f1cfc1ab73773e4e8618d222c56ab17f3bd5b7dc76c4a967229f931c",
+  "files": [
+    { "path": "openspec/changes/comet-workflow-ui/proposal.md", "sha256": "8eda87ad1e2aeabbec6aac96c81bb252bf12200eb617c990f59f03ec96d0f0f9" },
+    { "path": "openspec/changes/comet-workflow-ui/design.md", "sha256": "98a54e72902f67077cabe15b8096cebf9db8fd7ce3b7d1f00f0e28c55070052c" },
+    { "path": "openspec/changes/comet-workflow-ui/tasks.md", "sha256": "b4c0f96c9896b8413bb547692a196e2e85f71c56c326d3559806c40e0b7c3189" },
+    { "path": "openspec/changes/comet-workflow-ui/specs/comet-command-routing/spec.md", "sha256": "efc7f1581b2ae380319c68f530b2dd3e6529af03a2997f963a996d898c188bc0" },
+    { "path": "openspec/changes/comet-workflow-ui/specs/comet-engine-ui-panels/spec.md", "sha256": "bafd5fa2bd58a382ac1e17860452aeb3c9a584dbfcb0b55addc6571ff67c8aac" },
+    { "path": "openspec/changes/comet-workflow-ui/specs/comet-orchestration-engine/spec.md", "sha256": "b256dbb1816d4f1482b9980a7b068c8112a8ac957d100f9f78008bb048140bde" },
+    { "path": "openspec/changes/comet-workflow-ui/specs/comet-ui-panels/spec.md", "sha256": "c6aec62fce6b33ce7c31f3497c6a49b6f06dcf1ca2505779ea3dffcd41ee1aba" }
+  ]
+}

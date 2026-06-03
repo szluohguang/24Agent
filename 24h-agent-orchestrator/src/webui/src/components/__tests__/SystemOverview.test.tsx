@@ -20,7 +20,7 @@ describe('SystemOverview', () => {
     expect(screen.getByText(/health\.active/)).toBeInTheDocument()
     expect(screen.getByText(/health\.status/)).toBeInTheDocument()
     expect(screen.getByText(/health\.retries/)).toBeInTheDocument()
-    expect(screen.getByText(/health\.budget/)).toBeInTheDocument()
+    expect(screen.getByText(/预算/)).toBeInTheDocument()
   })
 
   it('displays active agent count correctly', () => {

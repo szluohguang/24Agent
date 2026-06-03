@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { CometStateMachine } from '../state-machine'
 
-const TEST_YAML = path.join(__dirname, '__test_comet__.yaml')
+const TEST_YAML = path.join(__dirname, '__test_sm_comet__.yaml')
 
 describe('CometStateMachine', () => {
   beforeEach(() => {

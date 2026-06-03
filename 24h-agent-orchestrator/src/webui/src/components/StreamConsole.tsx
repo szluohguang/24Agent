@@ -205,7 +205,7 @@ const SLASH_COMMANDS = [
   { cmd: '/help', desc: '显示帮助' },
 ]
 
-export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt, selectedTaskId }: StreamConsoleProps) {
+export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt, selectedTaskId, cometDecision, onCometDecision }: StreamConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const sessionIds = activeSessionId
     ? [activeSessionId]

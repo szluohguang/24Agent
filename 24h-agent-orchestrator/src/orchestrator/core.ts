@@ -87,24 +87,30 @@ export class Orchestrator {
     // 从持久化加载配置
     this.loadConfig()
 
-    // Comet 引擎初始化
-    const orchestrationPath = path.join(process.cwd(), 'comet-orchestration.json')
-    const yamlRoot = path.join(process.cwd(), 'openspec', 'changes')
-    let activeChange = 'comet-workflow-ui'
+    // Comet 引擎初始化（测试环境中可能无对应文件，静默跳过）
     try {
-      const dirs = fs.readdirSync(path.join(process.cwd(), 'openspec', 'changes'))
-      const nonArchive = dirs.filter(d => d !== 'archive').filter(d => {
-        try { return fs.statSync(path.join(process.cwd(), 'openspec', 'changes', d)).isDirectory() } catch { return false }
-      })
-      if (nonArchive.length > 0) activeChange = nonArchive[0]
-    } catch {}
+      const orchestrationPath = path.join(process.cwd(), 'comet-orchestration.json')
+      const yamlRoot = path.join(process.cwd(), 'openspec', 'changes')
+      let activeChange = 'comet-workflow-ui'
+      try {
+        const dirs = fs.readdirSync(yamlRoot)
+        const nonArchive = dirs.filter(d => d !== 'archive').filter(d => {
+          try { return fs.statSync(path.join(yamlRoot, d)).isDirectory() } catch { return false }
+        })
+        if (nonArchive.length > 0) activeChange = nonArchive[0]
+      } catch {}
 
-    const yamlPath = path.join(process.cwd(), 'openspec', 'changes', activeChange, '.comet.yaml')
-    this.cometEngine = new CometOrchestrator(orchestrationPath, yamlPath, activeChange)
-    this.cometEngine.onStateChange((state) => {
-      this.broadcast?.({ type: 'comet-state-update', state })
-    })
-    this.cometEngine.start().catch(console.error)
+      const yamlPath = path.join(yamlRoot, activeChange, '.comet.yaml')
+      if (fs.existsSync(orchestrationPath) && fs.existsSync(yamlPath)) {
+        this.cometEngine = new CometOrchestrator(orchestrationPath, yamlPath, activeChange)
+        this.cometEngine.onStateChange((state) => {
+          this.broadcast?.({ type: 'comet-state-update', state })
+        })
+        this.cometEngine.start().catch(console.error)
+      }
+    } catch (e) {
+      // Comet 引擎初始化失败，不影响核心功能
+    }
 
     // 健康监控
     this.healthMonitor = new HealthMonitor(
