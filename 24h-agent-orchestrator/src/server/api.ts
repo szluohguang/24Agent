@@ -16,14 +16,14 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     return orchestrator.getState()
   })
 
-  app.post<{ Body: { description: string; dependsOn?: string[]; priority?: number } }>(
+  app.post<{ Body: { description: string; dependsOn?: string[]; priority?: number; cometPhase?: string } }>(
     '/api/task',
     async (request, reply) => {
-      const { description, dependsOn } = request.body
+      const { description, dependsOn, cometPhase } = request.body
       if (!description) {
         return reply.status(400).send({ error: 'description is required' })
       }
-      const taskId = orchestrator.addTask(description, dependsOn)
+      const taskId = orchestrator.addTask(description, dependsOn, cometPhase)
       return { taskId }
     },
   )

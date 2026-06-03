@@ -54,7 +54,8 @@ function createTables(database: Database.Database) {
       budget REAL NOT NULL DEFAULT 0,
       priority INTEGER NOT NULL DEFAULT 0,
       createdAt INTEGER NOT NULL,
-      updatedAt INTEGER NOT NULL
+      updatedAt INTEGER NOT NULL,
+      cometPhase TEXT
     );
 
     CREATE TABLE IF NOT EXISTS agents (

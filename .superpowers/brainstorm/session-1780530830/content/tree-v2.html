@@ -1,0 +1,57 @@
+<h2>根据你的反馈：修正后的结构</h2>
+<p class="subtitle">根 = Comet Change，动态生成二级/三级目录</p>
+
+<h3>设计</h3>
+<div class="mockup" style="margin-bottom: 16px;">
+  <div class="mockup-body" style="text-align:left; font-family: monospace; line-height: 2; padding: 16px; font-size:14px;">
+    <div style="color:#d29922; font-weight:bold">▶ wechat-streaming-console <span style="color:#8b949e;font-weight:normal;font-size:12px">build · full workflow</span></div>
+    
+    <div style="padding-left:16px; color:#58a6ff; margin-top:4px">▼ 开启阶段任务</div>
+    <div style="padding-left:32px; color:#c9d1d9">  ☐ 编写 proposal.md</div>
+    <div style="padding-left:32px; color:#c9d1d9">  ☐ 编写 design.md</div>
+    <div style="padding-left:32px; color:#c9d1d9">  ☐ 定义 tasks.md</div>
+    
+    <div style="padding-left:16px; color:#3fb950; margin-top:4px">▼ 深度设计阶段任务 <span style="color:#8b949e;font-weight:normal;font-size:12px">2/3 已完成</span></div>
+    <div style="padding-left:32px; color:#8b949e">  ☑ 技术方案 brainstorm</div>
+    <div style="padding-left:32px; color:#8b949e">  ☑ 编写 Design Doc</div>
+    <div style="padding-left:32px; color:#c9d1d9">  ☐ 定义 delta specs</div>
+    
+    <div style="padding-left:16px; color:#58a6ff; margin-top:4px">▼ 计划与构建阶段任务 <span style="color:#f0883e;font-weight:normal;font-size:12px">活跃 · 1/5 进行中</span></div>
+    <div style="padding-left:32px; color:#8b949e">  ▼ T1: 实现流式控制台 UI</div>
+    <div style="padding-left:48px; color:#8b949e">    ⊞ subagent-1 [ses_abc] <span style="color:#3fb950">healthy</span></div>
+    <div style="padding-left:48px; color:#8b949e">    ⊞ subagent-2 [ses_def] <span style="color:#3fb950">healthy</span></div>
+    <div style="padding-left:32px; color:#8b949e">  ▶ T2: 实现斜杠命令处理</div>
+    <div style="padding-left:32px; color:#f0883e">  ⟳ T3: WebSocket 连接优化 (retry 2/5)</div>
+    <div style="padding-left:48px; color:#8b949e">    ⊞ subagent-3 [ses_xyz] <span style="color:#f0883e">retrying</span></div>
+    <div style="padding-left:32px; color:#8b949e">  ☐ T4: 端到端测试</div>
+    <div style="padding-left:32px; color:#8b949e">  ☐ T5: 性能压测</div>
+    
+    <div style="padding-left:16px; color:#8b949e; margin-top:4px">▶ 验证与收尾阶段任务</div>
+    <div style="padding-left:16px; color:#8b949e">▶ 归档阶段任务</div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">核心要点：</p>
+<ul style="font-size:13px; line-height:1.8; color:#c9d1d9">
+  <li>根节点 = Comet Change 名称，显示当前 phase + workflow 类型</li>
+  <li>二级目录 = <strong>按阶段动态创建</strong>：根据 change 当前所处的阶段，显示该阶段及之前所有阶段的任务分类</li>
+  <li>三级目录 = <strong>tasks.md 中定义的 task</strong>，每个 task 下挂载实际执行的 opencode subagent</li>
+  <li>已完成阶段显示 ☑，活跃阶段高亮，未开始阶段低透明度</li>
+</ul>
+
+<div class="options">
+  <div class="option" data-choice="yes" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>确认，就这样</h3>
+      <p>按这个方向继续细化交互</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">⟳</div>
+    <div class="content">
+      <h3>需要调整</h3>
+      <p>还有些地方需要修改</p>
+    </div>
+  </div>
+</div>

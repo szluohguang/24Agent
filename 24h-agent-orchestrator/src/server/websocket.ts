@@ -61,7 +61,7 @@ async function handleWsMessage(
 ) {
   switch (msg.type) {
     case 'create-task':
-      orchestrator.addTask(msg.description as string, (msg.dependsOn as string[]) || [])
+      orchestrator.addTask(msg.description as string, (msg.dependsOn as string[]) || [], msg.cometPhase as string | undefined)
       break
     case 'dispatch-task':
       await orchestrator.dispatchTask(msg.taskId as string)

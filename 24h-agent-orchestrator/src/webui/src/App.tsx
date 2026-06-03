@@ -223,8 +223,8 @@ export function App() {
     send({ type: 'set-permission', level })
   }, [send])
   const handleCreateTask = useCallback((description: string) => {
-    send({ type: 'create-task', description, dependsOn: [] })
-  }, [send])
+    send({ type: 'create-task', description, dependsOn: [], cometPhase: cometState?.phase })
+  }, [send, cometState])
 
   const handleApprove = useCallback((taskId: string, feedback?: string) => {
     send({ type: 'approve-task', taskId, feedback })
@@ -380,7 +380,6 @@ export function App() {
               onDelete={handleDelete}
               onSelect={handleSelectTask}
               cometState={cometState ?? undefined}
-              onPhaseSelect={(phase) => console.log('Phase selected:', phase)}
             />
           </div>
           <form onSubmit={handleSubmitTask} style={{

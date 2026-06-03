@@ -1,0 +1,52 @@
+<h2>左侧任务树 — 两种结构方案</h2>
+<p class="subtitle">当前实现 vs 你描述的理想结构，你倾向哪一个？</p>
+
+<h3>方案 A（当前实现）</h3>
+<div class="mockup" style="margin-bottom: 16px;">
+  <div class="mockup-body" style="text-align:left; font-family: monospace; line-height: 1.8; padding: 12px;">
+    <div style="color:#58a6ff">▼ 开启</div>
+    <div style="color:#58a6ff">▼ 深度设计</div>
+    <div style="color:#58a6ff">▼ 计划与构建（活跃）</div>
+    <div style="padding-left:16px; color:#8b949e">  task-1: 实现某某功能</div>
+    <div style="padding-left:32px; color:#484f58">  ⊞ [ses_abc] healthy</div>
+    <div style="color:#58a6ff">▼ 验证与收尾</div>
+    <div style="color:#58a6ff">▼ 归档</div>
+    <div style="color:#8b949e">○ 其他任务 (2)</div>
+  </div>
+</div>
+
+<h3>方案 B（你描述的 Change→Task→Subagent）</h3>
+<div class="mockup" style="margin-bottom: 16px;">
+  <div class="mockup-body" style="text-align:left; font-family: monospace; line-height: 1.8; padding: 12px;">
+    <div style="color:#d29922; font-weight:bold">▼ [Change] wechat-streaming-console</div>
+    <div style="padding-left:16px; color:#58a6ff">  ▼ T1: 实现微信流式控制台 UI</div>
+    <div style="padding-left:32px; color:#8b949e">    ▶ 设计方案</div>
+    <div style="padding-left:32px; color:#3fb950; font-size:12px">    ✓ 已完成: 前端组件开发</div>
+    <div style="padding-left:32px; color:#8b949e">    ⊞ subagent-1 (opencode) [ses_abc] healthy</div>
+    <div style="padding-left:32px; color:#8b949e">    ⊞ subagent-2 (opencode) [ses_def] healthy</div>
+    <div style="padding-left:16px; color:#58a6ff">  ▼ T2: 实现斜杠命令处理</div>
+    <div style="padding-left:32px; color:#f0883e">    ⟳ subagent-3 (opencode) [retry 2/5]</div>
+    <div style="padding-left:16px; color:#58a6ff">  ▶ T3: 集成测试</div>
+    <div style="padding-left:24px; margin-top:8px; border-top:1px solid #30363d;"></div>
+    <div style="color:#8b949e; font-size:12px">  完成进度: ██████░░░░ 3/8 tasks (37%)</div>
+  </div>
+</div>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="A" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>以 Comet 阶段为根</h3>
+      <p>按阶段分组（开启/设计/构建/验证/归档），适合跟踪工作流进度</p>
+    </div>
+  </div>
+  <div class="option" data-choice="B" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>以 Change 为根</h3>
+      <p>按 tasks.md 任务层级结构，每个 Change 独立一棵树</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">看完后在终端告诉我你的选择或想法 👇</p>

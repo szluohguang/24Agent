@@ -30,6 +30,7 @@ export interface TaskState {
   budget: number
   result?: TaskResult       // 评估结果（awaiting_review 时暂存，供审核面板展示）
   reviewHistory?: ReviewRecord[]  // 审核历史记录
+  cometPhase?: string       // 所属 Comet 阶段（open/design/build/verify/archive）
 }
 
 /** Agent 健康状态 */

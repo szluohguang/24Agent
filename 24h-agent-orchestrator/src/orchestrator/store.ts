@@ -20,21 +20,22 @@ export class Store {
 
   insertTask(task: TaskState): void {
     const stmt = this.db.prepare(`
-      INSERT INTO tasks (id, description, status, dependsOn, sessionId, retryCount, maxRetries, error, permission, budget, priority, createdAt, updatedAt)
-      VALUES (@id, @description, @status, @dependsOn, @sessionId, @retryCount, @maxRetries, @error, @permission, @budget, @priority, @createdAt, @updatedAt)
+      INSERT INTO tasks (id, description, status, dependsOn, sessionId, retryCount, maxRetries, error, permission, budget, priority, createdAt, updatedAt, cometPhase)
+      VALUES (@id, @description, @status, @dependsOn, @sessionId, @retryCount, @maxRetries, @error, @permission, @budget, @priority, @createdAt, @updatedAt, @cometPhase)
     `)
     stmt.run({
       ...task,
       dependsOn: JSON.stringify(task.dependsOn),
       sessionId: task.sessionId ?? null,
       error: task.error ?? null,
+      cometPhase: task.cometPhase ?? null,
     })
   }
 
   updateTask(task: TaskState): void {
     const stmt = this.db.prepare(`
       UPDATE tasks SET status=@status, dependsOn=@dependsOn, sessionId=@sessionId,
-        retryCount=@retryCount, error=@error, permission=@permission, budget=@budget, updatedAt=@updatedAt
+        retryCount=@retryCount, error=@error, permission=@permission, budget=@budget, updatedAt=@updatedAt, cometPhase=@cometPhase
       WHERE id=@id
     `)
     stmt.run({
@@ -46,6 +47,7 @@ export class Store {
       error: task.error ?? null,
       permission: task.permission,
       budget: task.budget,
+      cometPhase: task.cometPhase ?? null,
       updatedAt: Date.now(),
     })
   }
@@ -83,6 +85,7 @@ export class Store {
       priority: row.priority as number,
       permission: (row.permission as PermissionLevel) || 'safe',
       budget: (row.budget as number) || 0,
+      cometPhase: (row.cometPhase as string) || undefined,
     }
   }
 

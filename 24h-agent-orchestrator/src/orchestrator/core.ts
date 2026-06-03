@@ -453,17 +453,19 @@ export class Orchestrator {
   }
 
   /** 添加新任务到队列：生成唯一 ID、注册 DAG、入调度队列 */
-  addTask(description: string, dependsOn: string[] = []) {
+  addTask(description: string, dependsOn: string[] = [], cometPhase?: string) {
     const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const now = Date.now()
 
     // 提交前先做 DAG 循环依赖检测，避免死锁
     this.scheduler.validateDag(id, dependsOn)
 
+    const phase = cometPhase ?? this.cometEngine?.getCurrentState().phase
     const task: TaskState = {
       id, description, status: 'pending', dependsOn,
       retryCount: 0, maxRetries: 10, createdAt: now, updatedAt: now,
       priority: 0, permission: this.permissionLevel, budget: this.budgetLimit,
+      cometPhase: phase,
     }
     this.tasks.set(id, task)
     this.store.insertTask(task)

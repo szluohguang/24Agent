@@ -41,6 +41,7 @@ const PHASE_LABELS: Record<string, string> = {
 }
 const PHASE_STATUS_COLORS: Record<string, string> = { completed: '#238636', active: '#58a6ff', pending: '#484f58' }
 const PHASE_STATUS_ICONS: Record<string, string> = { completed: '✓', active: '●', pending: '○' }
+const WORKFLOW_LABELS: Record<string, string> = { full: '完整流程', hotfix: 'hotfix', tweak: 'tweak' }
 
 const DIALOG_OVERLAY: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const DIALOG_BOX: React.CSSProperties = { background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: 24, maxWidth: 420 }
@@ -164,18 +165,17 @@ function TaskItem({ task, agent, isSelected, isHovered, onSelect, onDispatch, on
   )
 }
 
-function ChangeRootNode({ cometState, children }: { cometState: CometEngineState; children: React.ReactNode }) {
-  const [expanded, setExpanded] = useState(true)
+interface ChangeRootNodeProps {
+  cometState: CometEngineState
+  children: React.ReactNode
+}
 
-  const workflowLabels: Record<string, string> = {
-    full: '完整流程',
-    hotfix: 'hotfix',
-    tweak: 'tweak',
-  }
+function ChangeRootNode({ cometState, children }: ChangeRootNodeProps) {
+  const [expanded, setExpanded] = useState(true)
 
   const currentPhase = cometState.phase
   const phaseLabel = PHASE_LABELS[currentPhase] || currentPhase
-  const workflowLabel = workflowLabels[cometState.workflow] || cometState.workflow
+  const workflowLabel = WORKFLOW_LABELS[cometState.workflow] || cometState.workflow
   const phaseStatus = cometState.phases[currentPhase]
   const isPhaseActive = phaseStatus?.status === 'active'
   const progress = phaseStatus?.progress ?? 0
@@ -198,7 +198,7 @@ function ChangeRootNode({ cometState, children }: { cometState: CometEngineState
             {expanded ? '▼' : '▶'}
           </span>
           <span style={{ fontSize: 14, fontWeight: 600, color: '#c9d1d9' }}>
-            {cometState.changeName}
+            {cometState.changeName || '(无活跃变更)'}
           </span>
           <span style={{
             fontSize: 11,

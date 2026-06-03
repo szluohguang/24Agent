@@ -25,6 +25,7 @@ export interface TaskNode {
   maxRetries?: number
   result?: TaskResult
   reviewHistory?: ReviewRecord[]
+  cometPhase?: string
 }
 
 export interface TimelineEntryData {

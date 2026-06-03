@@ -115,7 +115,8 @@ export function createOrchestratorWithMockClient() {
       dependsOn TEXT NOT NULL DEFAULT '[]', sessionId TEXT, retryCount INTEGER NOT NULL DEFAULT 0,
       maxRetries INTEGER NOT NULL DEFAULT 10, error TEXT, permission TEXT NOT NULL DEFAULT 'safe',
       budget REAL NOT NULL DEFAULT 0, priority INTEGER NOT NULL DEFAULT 0,
-      createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL
+      createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL,
+      cometPhase TEXT
     );
     CREATE TABLE IF NOT EXISTS agents (
       sessionId TEXT PRIMARY KEY, taskId TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'creating',
