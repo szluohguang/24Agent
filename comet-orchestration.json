@@ -1,0 +1,142 @@
+{
+  "schema": "comet-orchestration-v1",
+  "initialPhase": "open",
+  "phases": {
+    "open": {
+      "label": "开启",
+      "description": "探索想法，创建 Change 结构",
+      "entry": {
+        "guards": [],
+        "preconditions": []
+      },
+      "exit": {
+        "guards": ["comet-guard.sh <change> open --apply"],
+        "postconditions": ["phase == design"],
+        "transitionTo": "design"
+      },
+      "decisionPoints": [
+        {
+          "id": "open-review",
+          "prompt": "审视 proposal/design/tasks 是否符合预期",
+          "options": [
+            {"label": "确认", "action": "transition:design"},
+            {"label": "调整", "action": "modify-artifacts", "loop": true}
+          ]
+        }
+      ]
+    },
+    "design": {
+      "label": "深度设计",
+      "description": "技术设计、brainstorming、Design Doc",
+      "entry": {
+        "guards": ["comet-state.sh check <change> design"],
+        "preconditions": ["proposal.md exists", "design.md exists"]
+      },
+      "exit": {
+        "guards": ["comet-guard.sh <change> design --apply"],
+        "postconditions": ["phase == build"],
+        "transitionTo": "build"
+      },
+      "decisionPoints": [
+        {
+          "id": "design-review",
+          "prompt": "确认技术设计方案",
+          "options": [
+            {"label": "确认", "action": "transition:build"},
+            {"label": "调整", "action": "modify-artifacts", "loop": true}
+          ]
+        }
+      ]
+    },
+    "build": {
+      "label": "计划与构建",
+      "description": "制定计划、编写代码、测试",
+      "entry": {
+        "guards": [],
+        "preconditions": ["design_doc exists"]
+      },
+      "exit": {
+        "guards": ["comet-guard.sh <change> build --apply"],
+        "postconditions": ["phase == verify"],
+        "transitionTo": "verify"
+      },
+      "decisionPoints": [
+        {
+          "id": "build-mode-select",
+          "prompt": "选择隔离方式和执行方式",
+          "options": [
+            {"label": "分支 + Subagent", "action": "set:isolation=branch,mode=subagent-driven-development"},
+            {"label": "分支 + 直行", "action": "set:isolation=branch,mode=executing-plans"},
+            {"label": "Worktree + Subagent", "action": "set:isolation=worktree,mode=subagent-driven-development"},
+            {"label": "Worktree + 直行", "action": "set:isolation=worktree,mode=executing-plans"}
+          ]
+        }
+      ]
+    },
+    "verify": {
+      "label": "验证与收尾",
+      "description": "验证实现、处理分支",
+      "entry": {
+        "guards": [],
+        "preconditions": ["tasks.md all checked"]
+      },
+      "exit": {
+        "guards": ["comet-guard.sh <change> verify --apply"],
+        "postconditions": ["verify_result != pending"],
+        "transitionTo": "archive"
+      },
+      "decisionPoints": [
+        {
+          "id": "verify-result",
+          "prompt": "验证结果处理",
+          "options": [
+            {"label": "通过", "action": "transition:archive"},
+            {"label": "失败-修复", "action": "transition:build", "loop": true},
+            {"label": "接受偏差", "action": "transition:archive"}
+          ]
+        }
+      ]
+    },
+    "archive": {
+      "label": "归档",
+      "description": "同步 spec、标记文档、归档 change",
+      "entry": {
+        "guards": [],
+        "preconditions": ["verify_result == pass"]
+      },
+      "exit": {
+        "guards": [],
+        "postconditions": ["archived == true"],
+        "transitionTo": null
+      },
+      "decisionPoints": [
+        {
+          "id": "finish-branch",
+          "prompt": "选择分支处理方式",
+          "options": [
+            {"label": "合并到主分支", "action": "merge"},
+            {"label": "创建 PR", "action": "create-pr"},
+            {"label": "保留分支", "action": "keep-branch"}
+          ]
+        }
+      ]
+    }
+  },
+  "presets": {
+    "hotfix": {
+      "extends": "full",
+      "skipPhases": ["design"],
+      "upgradeRules": [
+        {"condition": "files >= 3 OR schema-change OR new-api", "action": "promote-to-full"}
+      ]
+    },
+    "tweak": {
+      "extends": "full",
+      "skipPhases": ["design"],
+      "skipGuards": ["build-plan"],
+      "upgradeRules": [
+        {"condition": "files >= 5 OR modules >= 2 OR tests >= 5", "action": "promote-to-full"}
+      ]
+    }
+  }
+}
