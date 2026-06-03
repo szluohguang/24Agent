@@ -141,6 +141,7 @@ export function ProjectSettings() {
           <textarea
             value={config.goal}
             onChange={(e) => setConfig((prev) => ({ ...prev, goal: e.target.value }))}
+            placeholder={intl.formatMessage({ id: 'projectSettings.goalPlaceholder' })}
             rows={3}
             style={{ ...inputStyle, resize: 'vertical' }}
           />
@@ -167,6 +168,7 @@ export function ProjectSettings() {
           <textarea
             value={config.description}
             onChange={(e) => setConfig((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder={intl.formatMessage({ id: 'projectSettings.descPlaceholder' })}
             rows={4}
             style={{ ...inputStyle, resize: 'vertical' }}
           />

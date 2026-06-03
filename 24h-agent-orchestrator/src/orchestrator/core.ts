@@ -514,7 +514,12 @@ export class Orchestrator {
       ? `\n\n## 前次执行反馈\n${task.reviewHistory.filter(r => r.action === 'rejected').map(r => r.feedback).filter(Boolean).join('\n')}`
       : ''
 
-    const promptText = `You are a code development sub-agent.
+    const projectConfig = this.store.getProjectConfig()
+    const projectContext = (projectConfig.goal || projectConfig.description)
+      ? `\n## Project Context\n- **Goal**: ${projectConfig.goal || '(not set)'}\n- **Description**: ${projectConfig.description || '(not set)'}`
+      : ''
+
+    const promptText = `You are a code development sub-agent.${projectContext}
 
 ## Task
 ${task.description}

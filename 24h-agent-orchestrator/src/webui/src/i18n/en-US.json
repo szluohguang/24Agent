@@ -131,6 +131,8 @@
   "projectSettings.saving": "Saving...",
   "projectSettings.saveError": "Save failed",
   "projectSettings.goal": "Project Goal",
+  "projectSettings.goalPlaceholder": "e.g., Build a 24/7 autonomous Agent orchestration system supporting task decomposition, sub-agent dispatch, real-time monitoring, and auto evaluation. Describe the project's core objective and expected outcomes.",
+  "projectSettings.descPlaceholder": "e.g., This project is based on the opencode ACP protocol, implementing an automated closed loop from goal definition to result evaluation. Explain the project background, scope, and technical approach.",
   "projectSettings.description": "Project Description",
   "projectSettings.save": "Save",
   "projectSettings.saved": "Saved",
