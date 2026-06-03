@@ -1,6 +1,45 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import type { ChunkData } from '../App.js'
+import type { CometEngineState } from '../types.js'
+
+interface DecisionCardProps {
+  decision: {
+    id: string
+    prompt: string
+    options: { label: string; action: string }[]
+  }
+  onSelect: (decisionId: string, choice: string) => void
+}
+
+function DecisionCard({ decision, onSelect }: DecisionCardProps) {
+  return (
+    <div style={{
+      background: '#1c2333',
+      border: '1px solid #58a6ff',
+      borderRadius: 8, padding: 16, margin: '12px 0'
+    }}>
+      <div style={{ color: '#58a6ff', fontWeight: 'bold', marginBottom: 12, fontSize: 15 }}>
+        ⚡ {decision.prompt}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {decision.options.map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => onSelect(decision.id, opt.label)}
+            style={{
+              background: '#238636', color: '#fff', border: 'none',
+              borderRadius: 6, padding: '8px 16px', cursor: 'pointer',
+              fontSize: 14,
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 interface StreamConsoleProps {
   sessions: Record<string, { taskId: string; stream: string[] }>
@@ -8,6 +47,8 @@ interface StreamConsoleProps {
   activeSessionId?: string
   lastUserPrompt?: string
   selectedTaskId?: string
+  cometDecision?: CometEngineState['activeDecision']
+  onCometDecision?: (decisionId: string, choice: string) => void
 }
 
 const CHUNK_ICONS: Record<string, string> = {
@@ -199,6 +240,9 @@ export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUs
         fontSize: 12, lineHeight: 1.5,
       }}
     >
+      {cometDecision && (
+        <DecisionCard decision={cometDecision} onSelect={(id, choice) => onCometDecision?.(id, choice)} />
+      )}
       {sessionIds.map((sid) => {
         const chunkData = sessionChunks[sid]
 

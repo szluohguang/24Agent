@@ -207,6 +207,10 @@ export function App() {
     send({ type: 'reject-task', taskId, feedback })
   }, [send])
 
+  const handleCometDecision = useCallback((decisionId: string, choice: string) => {
+    send({ type: 'comet-decision', decisionId, choice })
+  }, [send])
+
   const handleSubmitTask = (e: React.FormEvent) => {
     e.preventDefault()
     if (!taskInput.trim()) return
@@ -382,7 +386,7 @@ export function App() {
             )}
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} lastUserPrompt={lastUserPrompt} selectedTaskId={selectedTaskId} />
+            <StreamConsole sessions={sessions} sessionChunks={sessionChunks} activeSessionId={activeSessionId} lastUserPrompt={lastUserPrompt} selectedTaskId={selectedTaskId} cometDecision={cometState?.activeDecision ?? null} onCometDecision={handleCometDecision} />
           </div>
           {/* Review panel for awaiting_review tasks */}
           {selectedTask?.status === 'awaiting_review' && (
