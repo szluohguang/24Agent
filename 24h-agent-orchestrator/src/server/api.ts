@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import type { FastifyInstance } from 'fastify'
 import type { Orchestrator } from '../orchestrator/core.js'
 import type { PermissionLevel } from '../orchestrator/types.js'
@@ -348,4 +349,26 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
       }
     },
   )
+
+  // ── Comet Engine ──
+
+  app.get('/api/comet/status', async () => {
+    const engine = (orchestrator as any).cometEngine
+    if (!engine) return { engineAvailable: false }
+    const state = engine.getCurrentState()
+    return { engineAvailable: true, state }
+  })
+
+  app.post('/api/plugins/update', async () => {
+    const results: { command: string; success: boolean; error?: string }[] = []
+    for (const cmd of ['git pull', 'npx openspec update']) {
+      try {
+        execSync(cmd, { cwd: process.cwd(), timeout: 30000, stdio: 'pipe' })
+        results.push({ command: cmd, success: true })
+      } catch (err) {
+        results.push({ command: cmd, success: false, error: err instanceof Error ? err.message : String(err) })
+      }
+    }
+    return { success: results.every(r => r.success), results }
+  })
 }

@@ -116,6 +116,12 @@ async function handleWsMessage(
       orchestrator.resetBudget()
       socket.send(JSON.stringify({ type: 'budget-reset' }))
       break
+    case 'comet-decision':
+      const engine2 = (orchestrator as any).cometEngine
+      if (engine2) {
+        await engine2.evaluateDecision({ decisionId: msg.decisionId as string, choice: msg.choice as string })
+      }
+      break
     default:
       socket.send(JSON.stringify({ type: 'error', message: `unknown type: ${msg.type}` }))
   }

@@ -66,6 +66,9 @@ export class SlashHandler {
           }
         }
 
+        case 'comet':
+          return { handled: true, reply: await this.handleComet(parts.slice(1)) }
+
         default:
           return { handled: true, reply: `未知命令: /${command}\n\n${this.help()}` }
       }
@@ -92,6 +95,9 @@ export class SlashHandler {
       '  `/project desc` - 查看项目描述',
       '  `/project desc set <文本>` - 设置项目描述',
       '  `/project progress` - 查看项目进度',
+      '',
+      '🚀 **Comet 工作流**',
+      '  `/comet <sub>` - Comet 工作流控制 (open/design/build/verify/archive/hotfix/tweak)',
       '',
       '❓ **其他**',
       '  `/help` - 显示此帮助',
@@ -287,5 +293,29 @@ export class SlashHandler {
       default:
         return `未知 /project 命令: ${sub}\n可用: goal, desc, progress`
     }
+  }
+
+  private async handleComet(args: string[]): Promise<string> {
+    const validSubs = ['open', 'design', 'build', 'verify', 'archive', 'hotfix', 'tweak']
+
+    if (args.length === 0) {
+      return `用法: /comet <${validSubs.join('|')}>\n\n子命令:\n${validSubs.map(s => `  ${s}`).join('\n')}`
+    }
+
+    const sub = args[0]!.toLowerCase()
+    if (!validSubs.includes(sub)) {
+      return `无效子命令: ${sub}\n可用: ${validSubs.join(', ')}`
+    }
+
+    const engine = (this.orchestrator as any).cometEngine
+    if (!engine) return 'Comet 引擎未初始化'
+
+    const state = engine.getCurrentState()
+    return [
+      `变更: ${state.changeName}`,
+      `当前阶段: ${state.phase}`,
+      `工作流: ${state.workflow}`,
+      `守卫状态: ${state.guardStatus}`,
+    ].join('\n')
   }
 }

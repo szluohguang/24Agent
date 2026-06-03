@@ -12,6 +12,7 @@ import { Logger } from './logger.js'
 import { Notifier, type WebhookConfig } from '../server/notifier.js'
 import { WeChatManager, type WeChatConfig, type WeChatLoginInfo } from '../wechat/manager.js'
 import { SlashHandler } from '../slash/index.js'
+import { CometOrchestrator } from '../comet-engine/orchestrator.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
@@ -60,6 +61,8 @@ export class Orchestrator {
   private wechatManager: WeChatManager
   private slashHandler: SlashHandler
   private storageDir: string
+  cometEngine?: CometOrchestrator
+  broadcast?: (data: { type: string; [key: string]: unknown }) => void
 
   getNotifier(): Notifier {
     return this.notifier
@@ -83,6 +86,25 @@ export class Orchestrator {
 
     // 从持久化加载配置
     this.loadConfig()
+
+    // Comet 引擎初始化
+    const orchestrationPath = path.join(process.cwd(), 'comet-orchestration.json')
+    const yamlRoot = path.join(process.cwd(), 'openspec', 'changes')
+    let activeChange = 'comet-workflow-ui'
+    try {
+      const dirs = fs.readdirSync(path.join(process.cwd(), 'openspec', 'changes'))
+      const nonArchive = dirs.filter(d => d !== 'archive').filter(d => {
+        try { return fs.statSync(path.join(process.cwd(), 'openspec', 'changes', d)).isDirectory() } catch { return false }
+      })
+      if (nonArchive.length > 0) activeChange = nonArchive[0]
+    } catch {}
+
+    const yamlPath = path.join(process.cwd(), 'openspec', 'changes', activeChange, '.comet.yaml')
+    this.cometEngine = new CometOrchestrator(orchestrationPath, yamlPath, activeChange)
+    this.cometEngine.onStateChange((state) => {
+      this.broadcast?.({ type: 'comet-state-update', state })
+    })
+    this.cometEngine.start().catch(console.error)
 
     // 健康监控
     this.healthMonitor = new HealthMonitor(
