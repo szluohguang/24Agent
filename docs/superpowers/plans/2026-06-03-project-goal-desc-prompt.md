@@ -2,6 +2,7 @@
 change: project-goal-desc-system-prompt
 design-doc: docs/superpowers/specs/2026-06-03-project-goal-desc-prompt-design.md
 base-ref: 272dc9e5c9e1ba15590e5c5a6b587a7bede2d7f9
+archived-with: 2026-06-03-project-goal-desc-system-prompt
 ---
 
 # Project Goal/Description System Prompt — Plan

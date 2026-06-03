@@ -11,7 +11,7 @@ verification_report: docs/superpowers/reports/2026-06-03-project-goal-desc-syste
 branch_status: handled
 created_at: 2026-06-03
 verified_at: 2026-06-03
-archived: false
+archived: true
 handoff_context: openspec/changes/project-goal-desc-system-prompt/.comet/handoff/design-context.json
 handoff_hash: d9aefc8c0f416bea799f466669b87cf9f483ed0f2d04cc0e78a5241abef2c339
 direct_override: true

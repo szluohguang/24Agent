@@ -2,6 +2,8 @@
 comet_change: project-goal-desc-system-prompt
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-03-project-goal-desc-system-prompt
+status: final
 ---
 
 # Project Goal/Description System Prompt — Design Doc
