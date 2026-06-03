@@ -372,6 +372,7 @@ export class Orchestrator {
       agents: Array.from(this.agents.values()),
       timeline: this.timeline,
       budget: { spent: this.budgetSpent, limit: this.budgetLimit },
+      cometState: this.cometEngine?.getCurrentState() ?? null,
     }
   }
 
