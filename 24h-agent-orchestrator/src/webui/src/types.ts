@@ -48,3 +48,21 @@ export interface ScheduleItem {
   enabled: boolean
   lastTriggered: number
 }
+
+export type CometPhase = 'open' | 'design' | 'build' | 'verify' | 'archive'
+export type CometWorkflow = 'full' | 'hotfix' | 'tweak'
+
+export interface CometPhaseStatus {
+  status: 'pending' | 'active' | 'completed'
+  progress: number
+}
+
+export interface CometEngineState {
+  changeName: string
+  phase: CometPhase
+  workflow: CometWorkflow
+  phases: Record<string, CometPhaseStatus>
+  activeDecision: { id: string; prompt: string; options: { label: string; action: string }[] } | null
+  guardStatus: 'idle' | 'running' | 'passed' | 'failed'
+  guardOutput: string | null
+}

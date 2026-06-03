@@ -11,7 +11,7 @@ import { HistoryPanel } from './components/HistoryPanel.js'
 import { WebhookManager } from './components/WebhookManager.js'
 import { SettingsPage } from './components/SettingsPage.js'
 import { ProjectDetail } from './components/ProjectDetail.js'
-import type { TaskNode, TimelineEntryData } from './types.js'
+import type { TaskNode, TimelineEntryData, CometEngineState } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
 
@@ -49,6 +49,14 @@ export function App() {
   const [followUpInput, setFollowUpInput] = useState('')
   const [lastUserPrompt, setLastUserPrompt] = useState('')
   const [budget, setBudget] = useState<{ spent: number; limit: number }>({ spent: 0, limit: 50 })
+  const [cometState, setCometState] = useState<CometEngineState | null>(null)
+
+  // Initial comet status load
+  useEffect(() => {
+    fetch('/api/comet/status').then(r => r.json()).then(data => {
+      if (data.engineAvailable) setCometState(data.state)
+    }).catch(() => {})
+  }, [])
 
   // Health polling
   useEffect(() => {
@@ -152,6 +160,11 @@ export function App() {
         if (typeof msg.taskId !== 'string') break
         setTasks((prev) => prev.filter((t) => t.id !== msg.taskId))
         setSelectedTaskId((prev) => prev === msg.taskId ? undefined : prev)
+        break
+      }
+      case 'comet-state-update': {
+        const msg = lastMessage as { type: 'comet-state-update'; state: CometEngineState }
+        if (msg.state) setCometState(msg.state)
         break
       }
       case 'chunk-delta': {
@@ -407,7 +420,7 @@ export function App() {
           <HealthDashboard agents={agents.map((a) => {
             const task = tasks.find((t) => t.id === a.taskId)
             return { ...a, taskDescription: task?.description }
-          })} stale={healthStale} tasks={{ total: tasks.length, running: tasks.filter((t) => t.status === 'running').length }} budget={budget} />
+          })} stale={healthStale} tasks={{ total: tasks.length, running: tasks.filter((t) => t.status === 'running').length }} budget={budget} cometState={cometState} />
         </div>
       </div>
       ) : page === 'settings' ? (
