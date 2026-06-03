@@ -27,6 +27,22 @@ interface SettingsPageProps {
 
 export function SettingsPage({ timelineEntries, budget, send, setBudget }: SettingsPageProps) {
   const [tab, setTab] = useState<SettingsTab>('schedule')
+  const [pluginUpdating, setPluginUpdating] = useState(false)
+  const [pluginResult, setPluginResult] = useState<string | null>(null)
+
+  const handlePluginUpdate = async () => {
+    setPluginUpdating(true)
+    setPluginResult(null)
+    try {
+      const res = await fetch('/api/plugins/update', { method: 'POST' })
+      const data = await res.json()
+      setPluginResult(data.success ? '✅ 更新成功' : `❌ 更新失败: ${data.output}`)
+    } catch (err: any) {
+      setPluginResult(`❌ 请求失败: ${err.message}`)
+    } finally {
+      setPluginUpdating(false)
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -107,6 +123,28 @@ export function SettingsPage({ timelineEntries, budget, send, setBudget }: Setti
                   <FormattedMessage id="config.resetBudget" />
                 </button>
               </div>
+            </div>
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: 16, marginTop: 16 }}>
+              <h3 style={{ margin: '0 0 8px', color: '#c9d1d9', fontSize: 16 }}>插件管理</h3>
+              <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 12 }}>
+                从上游仓库更新 OpenSpec、Superpowers 及相关 Skill。
+              </p>
+              <button
+                onClick={handlePluginUpdate}
+                disabled={pluginUpdating}
+                style={{
+                  background: '#238636', color: '#fff', border: 'none',
+                  borderRadius: 6, padding: '8px 16px', cursor: 'pointer',
+                  fontSize: 14, opacity: pluginUpdating ? 0.6 : 1,
+                }}
+              >
+                {pluginUpdating ? '更新中...' : '更新插件'}
+              </button>
+              {pluginResult && (
+                <p style={{ marginTop: 8, color: '#8b949e', fontSize: 13 }}>
+                  {pluginResult}
+                </p>
+              )}
             </div>
           </div>
         )}
