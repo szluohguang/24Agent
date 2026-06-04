@@ -389,6 +389,16 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
 
   const activeTasks = useMemo(() => tasks.filter(t => ACTIVE_STATUSES.has(t.status)), [tasks])
   const completedTasks = useMemo(() => tasks.filter(t => COMPLETED_STATUSES.has(t.status)), [tasks])
+  const taskMap = useMemo(() => {
+    const map = new Map<string, TaskNode[]>()
+    for (const t of tasks) {
+      for (const depId of t.dependsOn) {
+        if (!map.has(depId)) map.set(depId, [])
+        map.get(depId)!.push(t)
+      }
+    }
+    return map
+  }, [tasks])
 
   if (cometState) {
     // 无任务时显示空状态
@@ -396,22 +406,10 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
       return <div style={{ padding: 16, color: '#8b949e', fontSize: 13 }}>暂无任务，输入描述创建新任务</div>
     }
 
-    // 根任务 = dependsOn 为空的独立任务
-    const taskMap = useMemo(() => {
-      const map = new Map<string, TaskNode[]>()
-      for (const t of tasks) {
-        for (const depId of t.dependsOn) {
-          if (!map.has(depId)) map.set(depId, [])
-          map.get(depId)!.push(t)
-        }
-      }
-      return map
-    }, [tasks])
     const rootTasks = tasks.filter(t => t.dependsOn.length === 0)
 
     const renderTaskWithChildren = (task: TaskNode, depth: number = 0): React.ReactNode => {
       const children = taskMap.get(task.id) || []
-      const isExpanded = expandedParents.has(task.id)
       return (
         <div key={task.id}>
           <div style={{ marginLeft: depth * 16 }}>
