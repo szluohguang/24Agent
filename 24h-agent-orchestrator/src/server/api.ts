@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
+import path from 'node:path'
 import type { FastifyInstance } from 'fastify'
 import type { Orchestrator } from '../orchestrator/core.js'
 import type { PermissionLevel } from '../orchestrator/types.js'
@@ -360,6 +361,23 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
 
   app.get('/api/fs/cwd', async () => {
     return { cwd: process.cwd() }
+  })
+
+  app.get<{ Querystring: { path?: string } }>('/api/fs/list', async (request) => {
+    const dirPath = request.query.path || process.cwd()
+    try {
+      const items = fs.readdirSync(dirPath, { withFileTypes: true })
+      const entries = items
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => ({
+          name: dirent.name,
+          path: path.join(dirPath, dirent.name),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+      return { entries, current: dirPath, parent: path.dirname(dirPath) }
+    } catch (e) {
+      return { entries: [], current: dirPath, parent: path.dirname(dirPath), error: (e as Error).message }
+    }
   })
 
   // ── System Logs ──

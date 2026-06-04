@@ -1,46 +1,49 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+interface DirEntry {
+  name: string
+  path: string
+}
 
 export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => void }) {
   const [dir, setDir] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const dirNameRef = useRef<string>('')
+  const [browsing, setBrowsing] = useState(false)
+  const [entries, setEntries] = useState<DirEntry[]>([])
+  const [currentPath, setCurrentPath] = useState('')
+  const [parentPath, setParentPath] = useState('')
+  const [loadErr, setLoadErr] = useState('')
 
-  // 挂载后尝试获取当前工作目录
   useEffect(() => {
-    fetch('/api/fs/cwd').then(r => r.json()).then(data => {
-      if (data.cwd) setDir(data.cwd)
+    fetch('/api/fs/cwd').then(r => r.json()).then(d => {
+      if (d.cwd) setDir(d.cwd)
     }).catch(() => {})
   }, [])
 
-  const handleBrowse = async () => {
-    if ('showDirectoryPicker' in window) {
-      try {
-        const handle = await (window as any).showDirectoryPicker()
-        dirNameRef.current = handle.name
-        // showDirectoryPicker 只返回目录名（如 "my-project"），不返回完整路径
-        setDir(handle.name)
-        setError('已选目录: ' + handle.name + '。请在文本框补全完整路径（如 /Users/name/' + handle.name + '）')
-      } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-          setError('目录选择失败: ' + (e?.message || '未知错误'))
-        }
-      }
-    } else {
-      // 回退: webkitdirectory — 仅获取目录名片段
-      fileInputRef.current?.click()
-    }
+  const loadDir = async (path: string) => {
+    setLoadErr('')
+    try {
+      const res = await fetch('/api/fs/list?path=' + encodeURIComponent(path))
+      const data = await res.json()
+      setEntries(data.entries || [])
+      setCurrentPath(data.current || '')
+      setParentPath(data.parent || '')
+      if (data.error) setLoadErr(data.error)
+    } catch { setLoadErr('无法读取目录') }
   }
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-    // webkitRelativePath 形如 "src/index.ts"，取第一段作为目录名提示
-    const seg = files[0].webkitRelativePath?.split('/')[0] || files[0].name || ''
-    dirNameRef.current = seg
-    setDir(seg)
-    setError('已选目录包含文件: ' + seg + '。请补全完整路径（如 /Users/name/' + seg + '）后点击确认')
+  const openBrowser = async () => {
+    setBrowsing(true)
+    const startPath = dir.trim() || (await fetch('/api/fs/cwd').then(r => r.json()).then(d => d.cwd || '/'))
+    await loadDir(startPath)
+  }
+
+  const navigateTo = (path: string) => loadDir(path)
+  const selectDir = (path: string) => {
+    setDir(path)
+    setError('')
+    setBrowsing(false)
   }
 
   const handleSave = async () => {
@@ -71,17 +74,18 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
     }}>
-      <input ref={fileInputRef} type="file" webkitdirectory="" style={{ display: 'none' }} onChange={handleFileSelected} />
       <div style={{
         background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-        padding: 24, width: 520, maxWidth: '90%',
+        padding: 24, width: 560, maxWidth: '90%',
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: '#c9d1d9', marginBottom: 8 }}>
           📁 设置项目目录
         </div>
         <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 16 }}>
-          所有任务将在项目目录下执行。请填入完整路径，如 <code style={{ background: '#0d1117', padding: '1px 4px', borderRadius: 3 }}>/Users/name/my-project</code>
+          所有任务将在项目目录下执行。
         </div>
+
+        {/* 路径输入行 */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <input
             type="text"
@@ -90,21 +94,55 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
             placeholder="输入完整目录路径"
             style={{
               flex: 1, padding: '8px 10px', background: '#0d1117', color: '#c9d1d9',
-              border: '1px solid #30363d', borderRadius: 4, fontSize: 13,
+              border: '1px solid #30363d', borderRadius: 4, fontSize: 13, fontFamily: 'monospace',
             }}
           />
-          <button onClick={handleBrowse} style={{
+          <button onClick={openBrowser} style={{
             padding: '8px 14px', background: '#21262d', color: '#c9d1d9',
             border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap',
           }}>浏览...</button>
         </div>
-        {error && (
+
+        {error && <div style={{ color: '#f85149', fontSize: 12, marginBottom: 8 }}>{error}</div>}
+
+        {/* 目录浏览器 */}
+        {browsing && (
           <div style={{
-            color: error.includes('不可用') ? '#f85149' : '#d29922',
-            fontSize: 12, marginBottom: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5,
-          }}>{error}</div>
+            border: '1px solid #30363d', borderRadius: 6, marginBottom: 8,
+            background: '#0d1117', maxHeight: 260, overflow: 'auto',
+          }}>
+            <div style={{
+              padding: '6px 10px', borderBottom: '1px solid #30363d',
+              display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
+            }}>
+              <button onClick={() => navigateTo(parentPath)} disabled={currentPath === parentPath}
+                style={{ background: 'none', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 14, padding: 0 }}>⬆</button>
+              <span style={{ color: '#8b949e', fontFamily: 'monospace', fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {currentPath}
+              </span>
+              <button onClick={() => setBrowsing(false)} style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
+            </div>
+            {loadErr && <div style={{ padding: 8, color: '#f85149', fontSize: 12 }}>{loadErr}</div>}
+            {entries.length === 0 && !loadErr && (
+              <div style={{ padding: 16, textAlign: 'center', color: '#484f58', fontSize: 12 }}>此目录为空</div>
+            )}
+            {entries.map(e => (
+              <div key={e.path} style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                cursor: 'pointer', borderBottom: '1px solid #21262d', fontSize: 13,
+              }}
+                onDoubleClick={() => navigateTo(e.path)}
+                onClick={() => selectDir(e.path)}
+              >
+                <span style={{ flexShrink: 0 }}>📁</span>
+                <span style={{ color: '#c9d1d9', flex: 1 }}>{e.name}</span>
+                <span style={{ fontSize: 10, color: '#8b949e' }}>双击浏览</span>
+              </div>
+            ))}
+          </div>
         )}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={handleSave} disabled={saving} style={{
             padding: '8px 20px', background: saving ? '#484f58' : '#238636', color: '#fff',
             border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13,
