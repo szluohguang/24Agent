@@ -69,19 +69,19 @@ export async function createOpencodeServer() {
   // opencode serve 默认无需密码，删除密码环境变量避免鉴权
   delete process.env['OPENCODE_SERVER_PASSWORD']
 
-  const envModel = process.env['ACP_MODEL'] || process.env['OPENCODE_MODEL']
+  const envModel = process.env['ACP_MODEL'] || process.env['OPENCODE_MODEL'] || 'deepseek/deepseek-chat'
 
   const server = await createOcServer({
     hostname: '127.0.0.1',
     port: 4096,
-    config: envModel ? { model: envModel } : undefined,
+    config: { model: envModel },
   })
 
   const client = createOpencodeClient({
     baseUrl: server.url,
   })
 
-  logger.info('startup', `opencode ACP server: ${server.url}${envModel ? ` (model: ${envModel})` : ''}`)
+  logger.info('startup', `opencode ACP server: ${server.url} (model: ${envModel})`)
   return { client, server }
 }
 
