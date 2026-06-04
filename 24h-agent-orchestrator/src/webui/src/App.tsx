@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { useWebSocket } from './hooks/useWebSocket.js'
 import { useLocale } from './i18n/useLocale.js'
@@ -54,6 +54,7 @@ export function App() {
   const [cometState, setCometState] = useState<CometEngineState | null>(null)
   const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([])
   const [showLogViewer, setShowLogViewer] = useState(false)
+  const pendingAutoSelectRef = useRef<string | null>(null)
 
   // Initial data loads
   useEffect(() => {
@@ -150,6 +151,15 @@ export function App() {
         if (msg.state) {
           const state = msg.state as { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
           applyState(state)
+          // 自动选中最匹配的已创建任务
+          if (pendingAutoSelectRef.current && state.tasks) {
+            const desc = pendingAutoSelectRef.current
+            const matched = state.tasks.find(t => t.description === desc && t.sessionId)
+            if (matched) {
+              pendingAutoSelectRef.current = null
+              setSelectedTaskId(matched.id)
+            }
+          }
         }
         break
       }
@@ -223,6 +233,7 @@ export function App() {
     send({ type: 'set-permission', level })
   }, [send])
   const handleCreateTask = useCallback((description: string) => {
+    pendingAutoSelectRef.current = description
     send({ type: 'create-task', description, dependsOn: [], cometPhase: cometState?.phase })
   }, [send, cometState])
 
