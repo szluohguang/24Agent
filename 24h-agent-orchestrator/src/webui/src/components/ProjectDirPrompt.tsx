@@ -6,32 +6,33 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleBrowse = () => {
-    // 尝试 File System Access API (Chrome 86+)
+  const handleBrowse = async () => {
     if ('showDirectoryPicker' in window) {
-      window.showDirectoryPicker().then(handle => {
-        setDir(handle.name)
-        setError('已选择目录，请补全完整路径后点击确认')
-      }).catch((e: Error) => {
-        if (e.name !== 'AbortError') {
-          setError('目录选择失败: ' + e.message + '，请手动输入完整路径')
+      try {
+        const handle = await (window as any).showDirectoryPicker()
+        // showDirectoryPicker 只返回目录名，不返回完整路径
+        const dirName = handle.name
+        setDir(dirName)
+        setError('已选择目录「' + dirName + '」，请在路径前补全完整路径。\n如: /Users/yourname/' + dirName)
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+          setError('目录选择器不可用，请手动输入完整路径: ' + (e?.message || ''))
         }
-        // AbortError = 用户取消，不提示
-      })
+      }
+    } else if (fileInputRef.current) {
+      // 回退: 使用 webkitdirectory
+      fileInputRef.current.click()
     } else {
-      // 回退: 触发隐藏的 file input
-      fileInputRef.current?.click()
+      setError('当前浏览器不支持目录选择，请手动输入完整路径')
     }
   }
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (files && files.length > 0) {
-      // webkitRelativePath 给出相对路径，仅用于提示
-      const path = files[0].webkitRelativePath || files[0].name
-      setDir(path)
-      setError('无法获取完整路径，请手动输入或填入完整目录路径')
-    }
+    if (!files || files.length === 0) return
+    // webkitdirectory 不暴露完整路径，仅用于确认用户已选择目录
+    setDir('')
+    setError('检测到目录已选择。浏览器安全限制无法读取完整路径，\n请手动输入完整目录路径（如 /Users/yourname/project）后点击确认。')
   }
 
   const handleSave = async () => {
@@ -65,20 +66,20 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
       <input ref={fileInputRef} type="file" webkitdirectory="" style={{ display: 'none' }} onChange={handleFileSelected} />
       <div style={{
         background: '#161b22', border: '1px solid #30363d', borderRadius: 12,
-        padding: 24, width: 480, maxWidth: '90%',
+        padding: 24, width: 520, maxWidth: '90%',
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: '#c9d1d9', marginBottom: 8 }}>
           📁 设置项目目录
         </div>
         <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 16 }}>
-          请先设置项目工作目录，所有任务将在此目录下执行。
+          所有任务将在项目目录下执行。请填入完整路径，如 <code style={{ background: '#0d1117', padding: '1px 4px', borderRadius: 3 }}>/Users/name/my-project</code>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <input
             type="text"
             value={dir}
             onChange={e => { setDir(e.target.value); setError('') }}
-            placeholder="输入完整目录路径，如 /Users/name/project"
+            placeholder="输入完整目录路径"
             style={{
               flex: 1, padding: '8px 10px', background: '#0d1117', color: '#c9d1d9',
               border: '1px solid #30363d', borderRadius: 4, fontSize: 13,
@@ -86,11 +87,16 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
           />
           <button onClick={handleBrowse} style={{
             padding: '8px 14px', background: '#21262d', color: '#c9d1d9',
-            border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12,
-          }}>浏览</button>
+            border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap',
+          }}>浏览...</button>
         </div>
-        {error && <div style={{ color: error.includes('失败') ? '#f85149' : '#d29922', fontSize: 12, marginBottom: 12 }}>{error}</div>}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        {error && (
+          <div style={{
+            color: error.includes('不可用') ? '#f85149' : '#d29922',
+            fontSize: 12, marginBottom: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5,
+          }}>{error}</div>
+        )}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <button onClick={handleSave} disabled={saving} style={{
             padding: '8px 20px', background: saving ? '#484f58' : '#238636', color: '#fff',
             border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13,
