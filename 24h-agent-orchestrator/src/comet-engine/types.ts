@@ -1,5 +1,7 @@
 export type CometPhase = 'open' | 'design' | 'build' | 'verify' | 'archive'
+export type EaglePhase = CometPhase
 export type CometWorkflow = 'full' | 'hotfix' | 'tweak'
+export type EagleWorkflow = CometWorkflow
 export type BuildMode = 'subagent-driven-development' | 'executing-plans' | 'direct'
 export type Isolation = 'branch' | 'worktree'
 export type VerifyResult = 'pending' | 'pass' | 'fail'

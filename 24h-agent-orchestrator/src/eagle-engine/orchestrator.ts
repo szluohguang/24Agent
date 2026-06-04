@@ -1,19 +1,19 @@
 import * as fs from 'fs'
 import type {
   CometPhase,
-  CometEngineState,
+  EagleEngineState,
   CometPhaseDecision,
   CometDecisionChoice,
 } from './types'
-import { CometStateMachine } from './state-machine'
-import { CodeGuards, GuardContext } from './guards'
+import { EagleStateMachine } from './state-machine'
+import { EagleGuards, EagleGuardContext } from './guards'
 
-export type StateChangeCallback = (state: CometEngineState) => void
+export type EagleStateChangeCallback = (state: EagleEngineState) => void
 
-export class CometOrchestrator {
-  private codeGuards: CodeGuards
-  private listeners: StateChangeCallback[] = []
-  private engineState: CometEngineState
+export class EagleOrchestrator {
+  private codeGuards: EagleGuards
+  private listeners: EagleStateChangeCallback[] = []
+  private engineState: EagleEngineState
   private baseDir: string
 
   constructor(
@@ -23,7 +23,7 @@ export class CometOrchestrator {
     baseDir?: string,
   ) {
     this.baseDir = baseDir || process.cwd()
-    this.codeGuards = new CodeGuards(this.baseDir)
+    this.codeGuards = new EagleGuards(this.baseDir)
     this.engineState = {
       changeName,
       phase: 'open',
@@ -63,7 +63,7 @@ export class CometOrchestrator {
 
     // 使用代码门禁替代 shell 脚本
     const yamlState = await this.getStateMachine().readState()
-    const ctx: GuardContext = {
+    const ctx: EagleGuardContext = {
       changeName: this.changeName,
       changeDir: `openspec/changes/${this.changeName}`,
       yamlState,
@@ -131,22 +131,22 @@ export class CometOrchestrator {
     }
   }
 
-  getCurrentState(): CometEngineState {
+  getCurrentState(): EagleEngineState {
     return { ...this.engineState }
   }
 
-  onStateChange(callback: StateChangeCallback): void {
+  onStateChange(callback: EagleStateChangeCallback): void {
     this.listeners.push(callback)
   }
 
-  private stateMachine?: CometStateMachine
-  private getStateMachine(): CometStateMachine {
+  private stateMachine?: EagleStateMachine
+  private getStateMachine(): EagleStateMachine {
     if (!this.stateMachine) {
-      this.stateMachine = new CometStateMachine(this.yamlPath)
+      this.stateMachine = new EagleStateMachine(this.yamlPath)
     }
     return this.stateMachine
   }
-  get stateMachineAccessor(): CometStateMachine { return this.getStateMachine() }
+  get stateMachineAccessor(): EagleStateMachine { return this.getStateMachine() }
 
   private getPhaseDefinition(phase: CometPhase) {
     const orch = JSON.parse(fs.readFileSync(this.orchestrationPath, 'utf-8'))

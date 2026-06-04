@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { CodeGuards } from '../guards'
+import { EagleGuards } from '../guards'
 
-describe('CodeGuards', () => {
-  const guards = new CodeGuards(process.cwd())
+describe('EagleGuards', () => {
+  const guards = new EagleGuards(process.cwd())
 
   it('returns fail for non-existent change dir on open exit', async () => {
     const result = await guards.checkExit('open', {

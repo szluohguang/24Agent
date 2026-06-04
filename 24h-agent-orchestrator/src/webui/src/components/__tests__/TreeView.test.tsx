@@ -30,16 +30,18 @@ function renderTree(tasks: TaskNode[], agents: Array<{ sessionId: string; taskId
     expect(screen.getByText('test task')).toBeInTheDocument()
   })
 
-  it('shows running status badge', () => {
+  it('shows pause button for running task', () => {
     const runningTask: TaskNode = { ...baseTask, status: 'running', sessionId: 'sess-1' }
     renderTree([runningTask], [], { onAbort: vi.fn(), onDelete: vi.fn() })
-    expect(screen.getByText('running')).toBeInTheDocument()
+    expect(screen.getByTitle('暂停')).toBeInTheDocument()
   })
 
-  it('shows running status for running task', () => {
+  it('calls onAbort when pause clicked', () => {
+    const onAbort = vi.fn()
     const runningTask: TaskNode = { ...baseTask, status: 'running', sessionId: 'sess-1' }
-    renderTree([runningTask], [], { onDelete: vi.fn(), onAbort: vi.fn() })
-    expect(screen.getByText('running')).toBeInTheDocument()
+    renderTree([runningTask], [], { onAbort, onDelete: vi.fn() })
+    fireEvent.click(screen.getByTitle('暂停'))
+    expect(onAbort).toHaveBeenCalledWith('task-1')
   })
 
   it('calls onSelect when task clicked', () => {

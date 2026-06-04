@@ -394,10 +394,10 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     return { ok: true }
   })
 
-  // ── Comet Engine ──
+  // ── Eagle Engine ──
 
-  app.get('/api/comet/status', async () => {
-    const engine = (orchestrator as any).cometEngine
+  app.get('/api/eagle/status', async () => {
+    const engine = (orchestrator as any).eagleEngine
     if (!engine) {
       return {
         engineAvailable: true,

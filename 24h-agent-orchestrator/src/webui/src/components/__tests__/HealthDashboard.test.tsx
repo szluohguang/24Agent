@@ -13,15 +13,15 @@ function renderWithIntl(ui: React.ReactElement) {
 describe('HealthDashboard', () => {
   it('renders agent health status correctly', () => {
     const agents = [
-      { sessionId: 'sess-001', taskId: 'task-1', healthStatus: 'healthy', lastHeartbeat: Date.now(), startTime: Date.now() - 300000 },
-      { sessionId: 'sess-004', taskId: 'task-4', healthStatus: 'dead', lastHeartbeat: 0, startTime: 0 },
+      { sessionId: 'sess-001', taskId: 'task-1', status: 'running', healthStatus: 'healthy', lastHeartbeat: Date.now(), startTime: Date.now() - 300000 },
+      { sessionId: 'sess-004', taskId: 'task-4', status: 'failed', healthStatus: 'dead', lastHeartbeat: 0, startTime: 0 },
     ]
 
     renderWithIntl(<HealthDashboard agents={agents} stale={false} />)
 
     expect(screen.getByText(/sess-001/)).toBeInTheDocument()
-    expect(screen.getByText(/healthy/)).toBeInTheDocument()
-    expect(screen.getByText(/dead/)).toBeInTheDocument()
+    expect(screen.getByText(/健康/)).toBeInTheDocument()
+    expect(screen.getByText(/已停止/)).toBeInTheDocument()
   })
 
   it('renders stale indicator when data is stale', () => {

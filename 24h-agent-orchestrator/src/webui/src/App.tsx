@@ -45,7 +45,7 @@ export function App() {
   const [permissionLevel, setPermissionLevel] = useState('safe')
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>()
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>()
-  const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
+  const [agents, setAgents] = useState<Array<{ sessionId: string; taskId: string; status: string; healthStatus: string; lastHeartbeat: number; startTime: number }>>([])
   const [healthStale, setHealthStale] = useState(false)
   const [page, setPage] = useState<'home' | 'settings' | 'project'>('home')
   const [taskInput, setTaskInput] = useState('')
@@ -60,7 +60,7 @@ export function App() {
 
   // Initial data loads
   useEffect(() => {
-    fetch('/api/comet/status').then(r => r.json()).then(data => {
+    fetch('/api/eagle/status').then(r => r.json()).then(data => {
       if (data.engineAvailable) setCometState(data.state)
     }).catch(() => {})
     fetch('/api/logs').then(r => r.json()).then(data => {
@@ -123,15 +123,27 @@ export function App() {
     if (state?.timeline) setTimelineEntries(state.timeline)
     if (state?.agents) {
       const validAgents = state.agents.filter((a): a is typeof a & { sessionId: string } => !!a.sessionId)
+      const activeSessionIds = new Set(validAgents.map(a => a.sessionId))
       setSessions((prev) => {
         const merged = { ...prev }
+        for (const sid of Object.keys(merged)) {
+          if (!activeSessionIds.has(sid)) delete merged[sid]
+        }
         for (const a of validAgents) {
           merged[a.sessionId] = { taskId: a.taskId, stream: a.stream || [] }
         }
         return merged
       })
+      setSessionChunks((prev) => {
+        const next = { ...prev }
+        for (const sid of Object.keys(next)) {
+          if (!activeSessionIds.has(sid)) delete next[sid]
+        }
+        return next
+      })
       setAgents(validAgents.map((a) => ({
         sessionId: a.sessionId, taskId: a.taskId,
+        status: a.status || 'running',
         healthStatus: a.healthStatus || 'healthy',
         lastHeartbeat: a.lastHeartbeat || Date.now(),
         startTime: a.startTime,
@@ -146,7 +158,7 @@ export function App() {
       case 'connected': {
         const msg = lastMessage as { type: 'connected'; clientId: string; state: unknown }
         const state = msg.state as
-          | { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
+          | { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; status: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
           | undefined
         applyState(state)
         break
@@ -154,7 +166,7 @@ export function App() {
       case 'state-update': {
         const msg = lastMessage as { type: 'state-update'; state: unknown }
         if (msg.state) {
-          const state = msg.state as { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
+          const state = msg.state as { tasks?: TaskNode[]; timeline?: TimelineEntryData[]; agents?: Array<{ sessionId: string; taskId: string; status: string; stream: string[]; healthStatus: string; lastHeartbeat: number; startTime: number }> }
           applyState(state)
           // 自动选中最匹配的已创建任务
           if (pendingAutoSelectRef.current && state.tasks) {
@@ -176,8 +188,8 @@ export function App() {
       case 'agent-state': {
         const msg = lastMessage as { type: 'agent-state'; sessionId: string; state: unknown }
         const st = msg.state as { status?: string; healthStatus?: string; lastHeartbeat?: number } | undefined
-        if (st?.healthStatus) {
-          setAgents((prev) => prev.map((a) => a.sessionId === msg.sessionId ? { ...a, healthStatus: st.healthStatus!, lastHeartbeat: st.lastHeartbeat ?? a.lastHeartbeat } : a))
+        if (st) {
+          setAgents((prev) => prev.map((a) => a.sessionId === msg.sessionId ? { ...a, ...st, lastHeartbeat: st.lastHeartbeat ?? a.lastHeartbeat } : a))
         }
         setSessions((prev) => {
           if (!prev[msg.sessionId]) return prev
@@ -195,8 +207,14 @@ export function App() {
       case 'task-deleted': {
         const msg = lastMessage as { type: 'task-deleted'; taskId: string }
         if (typeof msg.taskId !== 'string') break
+        const deletedTask = tasks.find(t => t.id === msg.taskId)
         setTasks((prev) => prev.filter((t) => t.id !== msg.taskId))
+        setAgents((prev) => prev.filter((a) => a.taskId !== msg.taskId))
         setSelectedTaskId((prev) => prev === msg.taskId ? undefined : prev)
+        if (deletedTask?.sessionId) {
+          setSessions((prev) => { const next = { ...prev }; delete next[deletedTask.sessionId!]; return next })
+          setSessionChunks((prev) => { const next = { ...prev }; delete next[deletedTask.sessionId!]; return next })
+        }
         break
       }
       case 'comet-state-update': {
@@ -403,6 +421,12 @@ export function App() {
             <TreeView
               tasks={tasks} agents={agents}
               selectedTaskId={selectedTaskId}
+              sessionToolCalls={Object.fromEntries(
+                Object.entries(sessionChunks).map(([sid, data]) => [
+                  sid,
+                  data.chunks.filter(c => c.type === 'tool_call').map(c => ({ toolName: c.toolName || 'tool', content: c.content })),
+                ]).filter(([, calls]) => calls.length > 0)
+              )}
               onDispatch={handleDispatch} onAbort={handleAbort}
               onDelete={handleDelete}
               onSelect={handleSelectTask}
@@ -479,7 +503,7 @@ export function App() {
           <HealthDashboard agents={agents.map((a) => {
             const task = tasks.find((t) => t.id === a.taskId)
             return { ...a, taskDescription: task?.description }
-          })} stale={healthStale} budget={budget} cometState={cometState} />
+          })} tasks={tasks} stale={healthStale} budget={budget} cometState={cometState} />
         </div>
       </div>
       ) : page === 'settings' ? (

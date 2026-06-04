@@ -53,8 +53,6 @@ export async function subscribeGlobalEvents(
       const type = payload.type as string | undefined
       const sessionId = (props?.sessionID as string) || ''
 
-      logger.debug('session-event', `SSE event: ${type}`, { sessionId: sessionId.slice(0, 8) })
-
       // 任意事件都通知 HealthMonitor 刷新最后活跃时间
       handlers.onAnyEvent?.(sessionId)
 

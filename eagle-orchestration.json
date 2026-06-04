@@ -1,5 +1,5 @@
 {
-  "schema": "comet-orchestration-v1",
+  "schema": "eagle-orchestration-v1",
   "initialPhase": "open",
   "phases": {
     "open": {

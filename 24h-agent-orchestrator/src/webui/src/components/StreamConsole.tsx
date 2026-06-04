@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useMemo } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import type { ChunkData } from '../App.js'
 import type { CometEngineState } from '../types.js'
@@ -75,7 +75,7 @@ function trimUserPrompt(content: string, lastPrompt?: string): string {
   return content
 }
 
-function ChunkCard({ chunk, isLastThinking, lastUserPrompt }: { chunk: ChunkData; isLastThinking?: boolean; lastUserPrompt?: string }) {
+const ChunkCard = React.memo(function ChunkCard({ chunk, isLastThinking, lastUserPrompt }: { chunk: ChunkData; isLastThinking?: boolean; lastUserPrompt?: string }) {
   const [collapsed, setCollapsed] = useState(chunk.type !== 'thinking')
   const intl = useIntl()
 
@@ -190,7 +190,7 @@ function ChunkCard({ chunk, isLastThinking, lastUserPrompt }: { chunk: ChunkData
       </div>
     </div>
   )
-}
+})
 
 const SLASH_COMMANDS = [
   { cmd: '/task create <描述>', desc: '创建任务' },
@@ -207,14 +207,35 @@ const SLASH_COMMANDS = [
 
 export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUserPrompt, selectedTaskId, cometDecision, onCometDecision }: StreamConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const sessionIds = activeSessionId
+  const userScrolledRef = useRef(false)
+  const sessionIds = useMemo(() => activeSessionId
     ? [activeSessionId]
     : Object.keys(sessionChunks).length > 0 ? Object.keys(sessionChunks) : Object.keys(sessions)
+  , [activeSessionId, sessionChunks, sessions])
+
+  const scrollToBottom = () => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    userScrolledRef.current = !atBottom
+  }
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (!userScrolledRef.current) {
+      scrollToBottom()
     }
+  })
+
+  // 用户切 session 或新 session 创建时强制到底
+  useEffect(() => {
+    scrollToBottom()
+    userScrolledRef.current = false
   }, [activeSessionId, sessionIds.length])
 
   if (sessionIds.length === 0) {
@@ -235,6 +256,7 @@ export function StreamConsole({ sessions, sessionChunks, activeSessionId, lastUs
   return (
     <div
       ref={scrollRef}
+      onScroll={handleScroll}
       style={{
         height: '100%', overflowY: 'auto', padding: 12,
         fontSize: 12, lineHeight: 1.5,

@@ -12,7 +12,7 @@ import { Logger, LogBuffer } from './logger.js'
 import { Notifier, type WebhookConfig } from '../server/notifier.js'
 import { WeChatManager, type WeChatConfig, type WeChatLoginInfo } from '../wechat/manager.js'
 import { SlashHandler } from '../slash/index.js'
-import { CometOrchestrator } from '../comet-engine/orchestrator.js'
+import { EagleOrchestrator } from '../eagle-engine/orchestrator.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
@@ -62,7 +62,7 @@ export class Orchestrator {
   private wechatManager: WeChatManager
   private slashHandler: SlashHandler
   private storageDir: string
-  cometEngine?: CometOrchestrator
+  eagleEngine?: EagleOrchestrator
   logBuffer?: LogBuffer
   broadcast?: (data: { type: string; [key: string]: unknown }) => void
 
@@ -95,8 +95,8 @@ export class Orchestrator {
     // Comet 引擎初始化（测试环境中可能无对应文件，静默跳过）
     try {
       const candidatePaths = [
-        path.join(process.cwd(), 'comet-orchestration.json'),
-        path.join(process.cwd(), '..', 'comet-orchestration.json'),
+        path.join(process.cwd(), 'eagle-orchestration.json'),
+        path.join(process.cwd(), '..', 'eagle-orchestration.json'),
       ]
       let orchestrationPath = ''
       for (const p of candidatePaths) {
@@ -114,11 +114,11 @@ export class Orchestrator {
 
       const yamlPath = path.join(yamlRoot, activeChange, '.comet.yaml')
       if (fs.existsSync(orchestrationPath) && fs.existsSync(yamlPath)) {
-        this.cometEngine = new CometOrchestrator(orchestrationPath, yamlPath, activeChange)
-        this.cometEngine.onStateChange((state) => {
+        this.eagleEngine = new EagleOrchestrator(orchestrationPath, yamlPath, activeChange)
+        this.eagleEngine.onStateChange((state) => {
           this.broadcast?.({ type: 'comet-state-update', state })
         })
-        this.cometEngine.start().catch(console.error)
+        this.eagleEngine.start().catch(console.error)
       }
     } catch (e) {
       // Comet 引擎初始化失败，不影响核心功能
@@ -379,7 +379,7 @@ export class Orchestrator {
       agents: Array.from(this.agents.values()),
       timeline: this.timeline,
       budget: { spent: this.budgetSpent, limit: this.budgetLimit },
-      cometState: this.cometEngine?.getCurrentState() ?? null,
+      cometState: this.eagleEngine?.getCurrentState() ?? null,
     }
   }
 
@@ -479,7 +479,7 @@ export class Orchestrator {
     // 提交前先做 DAG 循环依赖检测，避免死锁
     this.scheduler.validateDag(id, dependsOn)
 
-    const phase = cometPhase ?? this.cometEngine?.getCurrentState().phase
+    const phase = cometPhase ?? this.eagleEngine?.getCurrentState().phase
     const task: TaskState = {
       id, description, status: 'pending', dependsOn,
       retryCount: 0, maxRetries: 10, createdAt: now, updatedAt: now,
@@ -508,23 +508,23 @@ export class Orchestrator {
 
   private createPhaseSubtasks(rootTaskId: string, description: string): boolean {
     try {
-      // 在多个可能路径中查找 comet-orchestration.json
+      // 在多个可能路径中查找 eagle-orchestration.json
       const candidatePaths = [
-        path.join(process.cwd(), 'comet-orchestration.json'),
-        path.join(process.cwd(), '..', 'comet-orchestration.json'),
+        path.join(process.cwd(), 'eagle-orchestration.json'),
+        path.join(process.cwd(), '..', 'eagle-orchestration.json'),
       ]
       let orchPath = ''
       for (const p of candidatePaths) {
         if (fs.existsSync(p)) { orchPath = p; break }
       }
       if (!orchPath) {
-        logger.warn('task-retry', 'comet-orchestration.json not found (tried: ' + candidatePaths.join(', ') + '), skip subtask creation')
+        logger.warn('task-retry', 'eagle-orchestration.json not found (tried: ' + candidatePaths.join(', ') + '), skip subtask creation')
         return false
       }
       const content = fs.readFileSync(orchPath, 'utf-8')
       const orch = JSON.parse(content) as { phases?: Record<string, { label?: string }> }
       if (!orch.phases) {
-        logger.warn('task-retry', 'comet-orchestration.json has no phases, skip subtask creation')
+        logger.warn('task-retry', 'eagle-orchestration.json has no phases, skip subtask creation')
         return false
       }
 
@@ -565,6 +565,17 @@ export class Orchestrator {
   async dispatchTask(taskId: string) {
     const task = this.tasks.get(taskId)
     if (!task) throw new Error(`Task ${taskId} not found`)
+
+    // Comet 阶段校验：如果任务绑定了 phase，必须匹配引擎当前阶段
+    if (task.cometPhase && this.eagleEngine) {
+      const enginePhase = this.eagleEngine.getCurrentState().phase
+      if (task.cometPhase !== enginePhase) {
+        throw new Error(
+          `Phase mismatch: task phase "${task.cometPhase}" ≠ engine phase "${enginePhase}". ` +
+          `Cannot dispatch task until Comet advances to "${task.cometPhase}".`
+        )
+      }
+    }
 
     if (this.budgetSpent >= this.budgetLimit) {
       this.addTimeline('system', 'system', 'budget-limit',
@@ -638,18 +649,18 @@ export class Orchestrator {
     if (projectConfig.description) parts.push(`- **描述**: ${projectConfig.description}`)
     const projectContext = parts.length > 0 ? `\n## Project Context\n${parts.join('\n')}` : ''
 
-    const promptText = `You are a code development sub-agent.${projectContext}
+    const promptText = `你是一个代码开发子 Agent。${projectContext}
 
-## Task
+## 任务
 ${task.description}
 ${feedbackContext}
-## Instructions
-1. Read the OpenSpec documents to understand the design
-2. Look at the existing code to understand the architecture
-3. Implement the required changes
-4. Run tests to verify
-5. Update tasks.md to mark your task as complete
-6. Return a summary of what was done`
+## 指令
+1. 阅读 OpenSpec 文档理解设计
+2. 查看现有代码理解架构
+3. 实现所需变更
+4. 运行测试验证
+5. 更新 tasks.md 标记任务完成
+6. 返回完成摘要（用中文）`
 
     logger.info('task-dispatch', `Dispatched: ${task.description}`, { taskId, sessionId, model: task.permission })
     await sendTaskPrompt(this.client, sessionId, promptText)
@@ -669,6 +680,14 @@ ${feedbackContext}
       if (!task) return
 
       const result = await evaluateTaskCompletion(this.client, sessionId)
+
+      // 如果 cost 为 0，从流内容字符数粗略估算（~4字符 ≈ 1 token）
+      if (result.cost === 0) {
+        const fullStream = agent.stream.join('')
+        const estTokens = Math.ceil(fullStream.length / 4)
+        result.cost = (estTokens / 1_000_000) * 2  // 仅按输出价估算
+        if (result.cost < 0.0001) result.cost = 0.0001  // 最低 0.0001 元
+      }
 
       task.updatedAt = Date.now()
       this.budgetSpent += result.cost
@@ -718,6 +737,20 @@ ${feedbackContext}
             summary.length > 500 ? summary.slice(0, 500) + '...' : summary,
           ].join('\n\n')
           this.wechatManager.sendToUser(targetUserId, chatMsg)
+        }
+      }
+
+      // 阶段子任务完成 → 自动推进 Comet 阶段
+      if (task.status === 'completed' && task.cometPhase && this.eagleEngine) {
+        const phaseOrder = ['open', 'design', 'build', 'verify', 'archive']
+        const currentIdx = phaseOrder.indexOf(task.cometPhase)
+        if (currentIdx >= 0 && currentIdx < phaseOrder.length - 1) {
+          const nextPhase = phaseOrder[currentIdx + 1]
+          this.eagleEngine.transition(nextPhase).catch(err => {
+            logger.error('comet', `Phase transition ${task.cometPhase}→${nextPhase} failed`, { error: err.message })
+            this.addTimeline('system', 'system', 'guard-failed',
+              `Guard failed: ${task.cometPhase}→${nextPhase}: ${err.message}`)
+          })
         }
       }
 
@@ -826,10 +859,21 @@ ${feedbackContext}
     this.callbacks.onStateChange()
   }
 
-  /** 删除任务及其关联的 Agent 会话 */
+  /** 删除任务及其关联的 Agent 会话，递归删除子任务 */
   deleteTask(taskId: string): void {
+    this.deleteTaskRecursive(taskId)
+    this.callbacks.onStateChange()
+  }
+
+  private deleteTaskRecursive(taskId: string): void {
     const task = this.tasks.get(taskId)
     if (!task) return
+
+    // 先递归删除所有依赖此任务的子任务
+    const children = Array.from(this.tasks.values()).filter(t => t.dependsOn.includes(taskId))
+    for (const child of children) {
+      this.deleteTaskRecursive(child.id)
+    }
 
     if (task.sessionId) {
       const agent = this.agents.get(task.sessionId)
@@ -844,7 +888,6 @@ ${feedbackContext}
     this.store.deleteTask(taskId)
     this.scheduler.onSessionEnded()
     this.addTimeline('user', 'system', 'task-delete', `Task deleted: ${task.description}`)
-    this.callbacks.onStateChange()
   }
 
   /** 中止运行中的任务：先 ACP abort 会话，再将任务状态回退到 pending */

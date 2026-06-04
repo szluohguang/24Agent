@@ -5,15 +5,22 @@ import type { TaskNode, TaskStatus } from '../types.js'
 interface AgentInfo {
   sessionId: string
   taskId: string
+  status: string
   healthStatus: string
   lastHeartbeat: number
   startTime: number
+}
+
+interface ToolCallItem {
+  toolName: string
+  content: string
 }
 
 interface TreeViewProps {
   tasks: TaskNode[]
   agents: AgentInfo[]
   selectedTaskId?: string
+  sessionToolCalls?: Record<string, ToolCallItem[]>
   onDispatch: (taskId: string) => void
   onAbort: (taskId: string) => void
   onSelect: (taskId: string) => void
@@ -81,7 +88,21 @@ function PhaseProgress({ cometPhase }: { cometPhase?: string }) {
   )
 }
 
-export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete }: TreeViewProps) {
+function getToolCallSummary(t: ToolCallItem): string {
+  const firstLine = t.content.split('\n')[0] || ''
+  return firstLine.length > 50 ? firstLine.slice(0, 50) + '…' : firstLine
+}
+
+const TOOL_ICONS: Record<string, string> = {
+  bash: '💻',
+  read: '📖',
+  edit: '✏️',
+  write: '📝',
+  glob: '🔍',
+  grep: '🔎',
+}
+
+export function TreeView({ tasks, agents, selectedTaskId, sessionToolCalls, onDispatch, onAbort, onSelect, onDelete }: TreeViewProps) {
   const [hoveredBtnId, setHoveredBtnId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
@@ -118,11 +139,61 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
     return { icon: STATUS_ICONS[task.status] || '○', color: STATUS_COLORS[task.status] || '#8b949e' }
   }
 
-  if (tasks.length === 0) {
+  interface Action {
+    icon: string
+    title: string
+    color: string
+    onClick: (e: React.MouseEvent) => void
+  }
+
+  const getActions = (task: TaskNode): Action[] => {
+    const actions: Action[] = []
+    switch (task.status) {
+      case 'pending':
+        actions.push({ icon: '▶', title: '开始', color: '#238636', onClick: (e) => { e.stopPropagation(); onDispatch(task.id) } })
+        actions.push({ icon: '✕', title: '删除', color: '#8b949e', onClick: (e) => { e.stopPropagation(); setConfirmDeleteId(task.id) } })
+        break
+      case 'running':
+        actions.push({ icon: '⏸', title: '暂停', color: '#d29922', onClick: (e) => { e.stopPropagation(); onAbort(task.id) } })
+        break
+      case 'failed':
+      case 'rejected':
+        actions.push({ icon: '↻', title: '重试', color: '#f0883e', onClick: (e) => { e.stopPropagation(); onDispatch(task.id) } })
+        actions.push({ icon: '✕', title: '删除', color: '#8b949e', onClick: (e) => { e.stopPropagation(); setConfirmDeleteId(task.id) } })
+        break
+      case 'completed':
+        actions.push({ icon: '↻', title: '重做', color: '#58a6ff', onClick: (e) => { e.stopPropagation(); onDispatch(task.id) } })
+        actions.push({ icon: '✕', title: '删除', color: '#8b949e', onClick: (e) => { e.stopPropagation(); setConfirmDeleteId(task.id) } })
+        break
+      default:
+        actions.push({ icon: '✕', title: '删除', color: '#8b949e', onClick: (e) => { e.stopPropagation(); setConfirmDeleteId(task.id) } })
+        break
+    }
+    return actions
+  }
+
+  if (rootTasks.length === 0) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#484f58', fontSize: 13 }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-        <div>暂无任务，输入描述创建新任务</div>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, color: '#484f58', fontSize: 13 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+          <div>暂无任务，输入描述创建新任务</div>
+          {tasks.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 11, color: '#8b949e' }}>
+              {tasks.filter(t => ACTIVE_STATUSES.has(t.status)).length > 0 && <>进行中 <strong>{tasks.filter(t => ACTIVE_STATUSES.has(t.status)).length}</strong> · </>}
+              共 {tasks.length} 个子任务
+            </div>
+          )}
+        </div>
+        <div style={{
+          padding: '8px 12px', borderTop: '1px solid #21262d',
+          display: 'flex', gap: 16, fontSize: 11, background: '#161b22', flexShrink: 0,
+        }}>
+          {activeCount > 0 && <span style={{ color: '#58a6ff' }}>进行中 <strong>{activeCount}</strong></span>}
+          {completedCount > 0 && <span style={{ color: '#3fb950' }}>已完成 <strong>{completedCount}</strong></span>}
+          {pendingCount > 0 && <span style={{ color: '#484f58' }}>待处理 <strong>{pendingCount}</strong></span>}
+          <span style={{ marginLeft: 'auto', color: '#8b949e' }}>共 {tasks.length} 任务</span>
+        </div>
       </div>
     )
   }
@@ -176,17 +247,23 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
                   </div>
                   <PhaseProgress cometPhase={phase} />
                 </div>
-                <span style={{
-                  background: STATUS_COLORS[root.status] + '22', color: STATUS_COLORS[root.status],
-                  border: '1px solid ' + STATUS_COLORS[root.status], borderRadius: 10,
-                  padding: '1px 8px', fontSize: 10, whiteSpace: 'nowrap', flexShrink: 0,
-                }}>{root.status}</span>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  {getActions(root).map((action, i) => (
+                    <button key={i} onClick={action.onClick} title={action.title} style={{
+                      background: 'transparent', color: action.color, border: '1px solid ' + action.color,
+                      borderRadius: 4, padding: '2px 6px', fontSize: 11, cursor: 'pointer',
+                      lineHeight: 1, opacity: 0.7,
+                    }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '0.7'}
+                    >{action.icon}</button>
+                  ))}
+                </div>
               </div>
 
               {/* 子任务 */}
               {children.length > 0 && (
                 <>
-                  {/* 展开/折叠按钮 */}
                   <div
                     onClick={() => toggleExpand(root.id)}
                     style={{
@@ -229,20 +306,61 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
                         }}>
                           {child.description}
                         </span>
-                        {child.status === 'pending' && (
-                          <button
-                            onClick={e => { e.stopPropagation(); onDispatch(child.id) }}
-                            style={{
-                              background: '#238636', color: '#fff', border: 'none',
-                              borderRadius: 3, padding: '2px 8px', fontSize: 10, cursor: 'pointer', flexShrink: 0,
+                        <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                          {getActions(child).map((action, i) => (
+                            <button key={i} onClick={action.onClick} title={action.title} style={{
+                              background: 'transparent', color: action.color, border: '1px solid ' + action.color,
+                              borderRadius: 3, padding: '1px 5px', fontSize: 10, cursor: 'pointer', lineHeight: 1,
+                              opacity: 0.7,
                             }}
-                          >▶</button>
-                        )}
+                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '0.7'}
+                            >{action.icon}</button>
+                          ))}
+                        </div>
                       </div>
                     )
                   })}
                 </>
               )}
+
+              {/* ACP 工具调用 — 动态展示 */}
+              {(() => {
+                const agent = agents.find(a => a.taskId === root.id)
+                const sid = agent?.sessionId
+                const calls = sid && sessionToolCalls?.[sid] ? sessionToolCalls[sid] : []
+                if (calls.length === 0) return null
+                return (
+                  <div style={{ borderTop: '1px solid #21262d' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px',
+                      fontSize: 11, color: '#58a6ff', userSelect: 'none',
+                    }}>
+                      <span style={{ fontSize: 10 }}>🔧</span>
+                      <span>工具调用 · {calls.length} 次</span>
+                    </div>
+                    <div style={{ padding: '0 12px 4px 28px' }}>
+                      {calls.slice(-5).map((tc, i) => (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          padding: '3px 0', fontSize: 10, color: '#8b949e',
+                        }}>
+                          <span>{TOOL_ICONS[tc.toolName] || '🔧'}</span>
+                          <span style={{ color: '#58a6ff', fontWeight: 600, flexShrink: 0 }}>{tc.toolName}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {getToolCallSummary(tc)}
+                          </span>
+                        </div>
+                      ))}
+                      {calls.length > 5 && (
+                        <div style={{ fontSize: 10, color: '#484f58', padding: '2px 0' }}>
+                          +{calls.length - 5} 更多
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )
         })}
