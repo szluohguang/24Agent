@@ -536,7 +536,7 @@ export class Orchestrator {
         const label = orch.phases[phase].label || phase
         const subId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
         const subTask: TaskState = {
-          id: subId, description: `[${label}] ${description}`, status: 'pending',
+          id: subId, description: `[${label}]`, status: 'pending',
           dependsOn: [prevId], retryCount: 0, maxRetries: 10,
           createdAt: Date.now(), updatedAt: Date.now(),
           priority: 0, permission: this.permissionLevel, budget: this.budgetLimit,
