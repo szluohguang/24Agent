@@ -16,6 +16,7 @@ import { CometOrchestrator } from '../comet-engine/orchestrator.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
+import { fileURLToPath } from 'node:url'
 
 const logger = Logger.getInstance()
 
@@ -96,7 +97,6 @@ export class Orchestrator {
       const candidatePaths = [
         path.join(process.cwd(), 'comet-orchestration.json'),
         path.join(process.cwd(), '..', 'comet-orchestration.json'),
-        path.join(__dirname, '..', '..', '..', 'comet-orchestration.json'),
       ]
       let orchestrationPath = ''
       for (const p of candidatePaths) {
@@ -502,7 +502,6 @@ export class Orchestrator {
       const candidatePaths = [
         path.join(process.cwd(), 'comet-orchestration.json'),
         path.join(process.cwd(), '..', 'comet-orchestration.json'),
-        path.join(__dirname, '..', '..', '..', 'comet-orchestration.json'),
       ]
       let orchPath = ''
       for (const p of candidatePaths) {

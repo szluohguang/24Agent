@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Comet 任务链路分析报告</title>
+<style>
+  body { font-family: -apple-system, 'Segoe UI', monospace; background: #0d1117; color: #c9d1d9; padding: 24px; max-width: 1100px; margin: auto; }
+  h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 12px; }
+  h2 { color: #c9d1d9; margin-top: 28px; }
+  .chain { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0; }
+  .node { padding: 10px 14px; border-radius: 8px; font-size: 12px; min-width: 90px; text-align: center; border: 1px solid; position: relative; }
+  .node .label { font-weight: 600; margin-bottom: 4px; }
+  .node .time { font-size: 10px; color: #8b949e; }
+  .node .status { font-size: 10px; margin-top: 4px; }
+  .arrow { display: flex; align-items: center; color: #30363d; font-size: 16px; }
+  .ok { background: #0d2818; border-color: #238636; }
+  .ok .label { color: #3fb950; }
+  .running { background: #0d1d30; border-color: #58a6ff; animation: pulse 2s infinite; }
+  .running .label { color: #58a6ff; }
+  .pending { background: #161b22; border-color: #30363d; }
+  .pending .label { color: #484f58; }
+  .fail { background: #2d1117; border-color: #da3633; }
+  .fail .label { color: #f85149; }
+  .stuck { background: #2d1d00; border-color: #d29922; }
+  .stuck .label { color: #d29922; }
+  @keyframes pulse { 50% { opacity: 0.6; } }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #21262d; }
+  th { color: #8b949e; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+  .badge-ok { background: #23863622; color: #3fb950; border: 1px solid #238636; }
+  .badge-fail { background: #da363322; color: #f85149; border: 1px solid #da3633; }
+  .badge-warn { background: #d2992222; color: #d29922; border: 1px solid #d29922; }
+  .badge-info { background: #58a6ff22; color: #58a6ff; border: 1px solid #58a6ff; }
+  .timeline-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .tl-segment { height: 100%; }
+  .tl-done { background: #238636; }
+  .tl-current { background: #58a6ff; }
+  .tl-pending { background: #21262d; }
+  .tl-fail { background: #da3633; }
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .summary-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; }
+  .summary-card .num { font-size: 28px; font-weight: 700; }
+  .summary-card .desc { font-size: 12px; color: #8b949e; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>🔗 Comet 任务链路分析报告</h1>
+<p style="color:#8b949e">任务: /comet 开发markdown的查看、编辑工具 | 时间: 2026-06-04 12:55:38</p>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="num" style="color:#3fb950">6</div>
+    <div class="desc">总任务数（1 根 + 5 子）</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#58a6ff">1</div>
+    <div class="desc">运行中任务</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#3fb950">6/6</div>
+    <div class="desc">子任务创建完成</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#d29922">~10s</div>
+    <div class="desc">当前运行时长</div>
+  </div>
+</div>
+
+<h2>📋 完整链路</h2>
+
+<div class="chain">
+  <div class="node ok">
+    <div class="label">📝 用户输入</div>
+    <div class="time">12:55:38.154</div>
+    <div class="status">✅ 12.2ms</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node ok">
+    <div class="label">📤 API 接收</div>
+    <div class="time">12:55:38.154</div>
+    <div class="status">✅ POST /api/task</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node ok">
+    <div class="label">➕ addTask</div>
+    <div class="time">12:55:38.156</div>
+    <div class="status">✅ 2ms</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node ok">
+    <div class="label">📋 子任务创建</div>
+    <div class="time">12:55:38.158</div>
+    <div class="status">✅ 5 subtasks</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node ok">
+    <div class="label">📢 onStateChange</div>
+    <div class="time">12:55:38.158</div>
+    <div class="status">✅ 广播</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node ok">
+    <div class="label">📊 Scheduler</div>
+    <div class="time">12:55:38.158</div>
+    <div class="status">✅ enqueue</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node running">
+    <div class="label">🚀 ACP Dispatch</div>
+    <div class="time">12:55:38.422</div>
+    <div class="status">⏳ 运行中...</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node ok">
+    <div class="label">🤖 Session 创建</div>
+    <div class="time">12:55:38.424</div>
+    <div class="status">✅ ses_16f03...</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node running">
+    <div class="label">📡 SSE 流式</div>
+    <div class="time">12:55:38.482</div>
+    <div class="status">⏳ 等待输出...</div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="node pending">
+    <div class="label">📺 控制台</div>
+    <div class="time">-</div>
+    <div class="status">⏳ 等待流式数据</div>
+  </div>
+</div>
+
+<h2>⏱ 时间线</h2>
+
+<div class="timeline-bar">
+  <div class="tl-segment tl-done" style="width:15%" title="任务创建 ~12ms"></div>
+  <div class="tl-segment tl-done" style="width:10%" title="子任务创建 ~2ms"></div>
+  <div class="tl-segment tl-done" style="width:10%" title="状态广播 ~1ms"></div>
+  <div class="tl-segment tl-done" style="width:15%" title="Scheduler ~1ms"></div>
+  <div class="tl-segment tl-current" style="width:50%" title="ACP Dispatch + SSE (运行中)"></div>
+</div>
+
+<h2>📊 节点明细</h2>
+
+<table>
+<tr><th>#</th><th>节点</th><th>时间</th><th>耗时</th><th>状态</th><th>详情</th></tr>
+<tr>
+  <td>1</td><td>用户提交任务</td>
+  <td>12:55:38.154</td><td>-</td>
+  <td><span class="badge badge-ok">✅ 通过</span></td>
+  <td>POST /api/task → orchestrator.addTask()</td>
+</tr>
+<tr>
+  <td>2</td><td>根任务创建</td>
+  <td>12:55:38.156</td><td>2ms</td>
+  <td><span class="badge badge-ok">✅ 通过</span></td>
+  <td>task-1780548938154-jocp | phase=-</td>
+</tr>
+<tr>
+  <td>3</td><td>phase 子任务创建</td>
+  <td>12:55:38.158</td><td>2ms</td>
+  <td><span class="badge badge-ok">✅ 通过</span></td>
+  <td>5 subtasks: 开启→深度设计→计划与构建→验证与收尾→归档</td>
+</tr>
+<tr>
+  <td>4</td><td>任务分发</td>
+  <td>12:55:38.422</td><td>264ms</td>
+  <td><span class="badge badge-ok">✅ 通过</span></td>
+  <td>ACP sessionId=ses_16f03554fffe6k2dDQYzdxehyh</td>
+</tr>
+<tr>
+  <td>5</td><td>SSE 会话流</td>
+  <td>12:55:38.424</td><td>-</td>
+  <td><span class="badge badge-info">⏳ 运行中</span></td>
+  <td>session.created → agent.switched → model.switched → stream</td>
+</tr>
+<tr>
+  <td>6</td><td>流式输出</td>
+  <td>12:55:38.482</td><td>-</td>
+  <td><span class="badge badge-info">⏳ 运行中</span></td>
+  <td>prompt 已发送，等待 agent stream delta</td>
+</tr>
+<tr>
+  <td>7</td><td>控制台展示</td>
+  <td>-</td><td>-</td>
+  <td><span class="badge badge-warn">⏳ 等待</span></td>
+  <td>需 WS chunk-delta → StreamConsole</td>
+</tr>
+</table>
+
+<h2>🔍 卡点分析</h2>
+
+<div style="background:#2d1d00; border:1px solid #d29922; border-radius:8px; padding:16px; margin:16px 0;">
+<h3 style="color:#d29922; margin:0 0 8px;">⚠ 当前卡在节点 5-6: SSE 流式输出</h3>
+<p style="margin:0; font-size:13px; line-height:1.6;">
+根任务已成功分发到 ACP，Agent session 已创建。prompt 已发送。<br>
+但 agent 的流式输出（stream-delta / chunk-delta）尚未到达控制台。<br>
+可能原因：ACP SDK 的 sessionPrompt 调用未返回流式数据，或 SSE event-stream 未正确转发到 WebSocket。<br>
+建议检查：<code>src/observer/event-stream.ts</code> 的 onTextDelta/onChunk 回调是否触发。
+</p>
+</div>
+
+<h2>🛠 修复历史</h2>
+<table>
+<tr><th>#</th><th>问题</th><th>修复</th><th>状态</th></tr>
+<tr>
+  <td>1</td><td>子任务条件被 cometPhase 阻塞</td>
+  <td>if 条件改为仅判断 dependsOn.length === 0</td>
+  <td><span class="badge badge-ok">已修复</span></td>
+</tr>
+<tr>
+  <td>2</td><td>子任务未广播到前端</td>
+  <td>createPhaseSubtasks 后追加 onStateChange()</td>
+  <td><span class="badge badge-ok">已修复</span></td>
+</tr>
+<tr>
+  <td>3</td><td>comet-orchestration.json 路径错</td>
+  <td>多路径搜索（cwd + 父目录）</td>
+  <td><span class="badge badge-ok">已修复</span></td>
+</tr>
+<tr>
+  <td>4</td><td>__dirname 在 ESM 未定义</td>
+  <td>移除 __dirname 路径引用</td>
+  <td><span class="badge badge-ok">已修复</span></td>
+</tr>
+<tr>
+  <td>5</td><td>流式输出未达控制台</td>
+  <td>需排查 SSE→WS 转发</td>
+  <td><span class="badge badge-warn">待排查</span></td>
+</tr>
+</table>
+
+</body>
+</html>
