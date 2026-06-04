@@ -1,0 +1,4 @@
+- [ ] 1. TreeView.tsx: 无任务时显示空状态，不渲染 Comet 阶段容器
+- [ ] 2. TreeView.tsx: 每个根任务独立展示，标题 = 任务描述，子任务通过 dependsOn 缩进
+- [ ] 3. orchestrator/core.ts: addTask 时根据描述自动创建 4 个子任务（设计/构建/验证/归档）
+- [ ] 4. 验证：typecheck + 测试通过

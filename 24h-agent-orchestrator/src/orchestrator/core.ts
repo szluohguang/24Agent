@@ -474,8 +474,46 @@ export class Orchestrator {
     this.scheduler.enqueue(id)
     logger.info('task-create', `Task: ${description}`, { taskId: id, dependsOn })
     this.addTimeline('system', 'system', 'task-add', `Task added: ${description}`)
+
+    // 根任务（无 dependsOn）自动创建阶段子任务
+    if (dependsOn.length === 0 && !cometPhase) {
+      this.createPhaseSubtasks(id, description)
+    }
+
     this.callbacks.onStateChange()
     return id
+  }
+
+  private createPhaseSubtasks(rootTaskId: string, description: string): void {
+    try {
+      const orchPath = path.join(process.cwd(), 'comet-orchestration.json')
+      if (!fs.existsSync(orchPath)) return
+      const orch = JSON.parse(fs.readFileSync(orchPath, 'utf-8')) as { phases?: Record<string, { label?: string }> }
+      if (!orch.phases) return
+
+      const phaseOrder = ['open', 'design', 'build', 'verify', 'archive']
+      let prevId = rootTaskId
+      for (const phase of phaseOrder) {
+        if (!orch.phases[phase]) continue
+        const label = orch.phases[phase].label || phase
+        const subId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        const subTask: TaskState = {
+          id: subId, description: `[${label}] ${description}`, status: 'pending',
+          dependsOn: [prevId], retryCount: 0, maxRetries: 10,
+          createdAt: Date.now(), updatedAt: Date.now(),
+          priority: 0, permission: this.permissionLevel, budget: this.budgetLimit,
+          cometPhase: phase,
+        }
+        this.tasks.set(subId, subTask)
+        this.store.insertTask(subTask)
+        this.scheduler.registerTask(subTask)
+        this.scheduler.enqueue(subId)
+        logger.info('task-create', `Subtask [${label}]: ${description}`, { taskId: subId, dependsOn: [prevId] })
+        prevId = subId
+      }
+    } catch (e) {
+      logger.error('task-fail', 'Failed to create phase subtasks', { error: e instanceof Error ? e.message : String(e) })
+    }
   }
 
   /**

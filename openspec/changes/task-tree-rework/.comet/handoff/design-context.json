@@ -1,0 +1,13 @@
+{
+  "change": "task-tree-rework",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "ba3c8248e1ea72ec6687cb46c35a4d105f03976f909fd9044d2537c4e6c808f1",
+  "files": [
+    { "path": "openspec/changes/task-tree-rework/proposal.md", "sha256": "b50ce8df381c96a4710ce1c2c7f91c191b4298db2a93070a11b04f84d7f8d469" },
+    { "path": "openspec/changes/task-tree-rework/design.md", "sha256": "23320c744bcb34bab00e18e32254873c7e600fc9a0d4b5f91cd1ca64aefb15cc" },
+    { "path": "openspec/changes/task-tree-rework/tasks.md", "sha256": "55ce3e875050443410716a34f8c13cb3a1d5c51690f0340aaefcb1fbb3974c74" }
+  ]
+}

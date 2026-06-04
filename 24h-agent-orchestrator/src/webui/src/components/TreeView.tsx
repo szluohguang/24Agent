@@ -391,8 +391,40 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
   const completedTasks = useMemo(() => tasks.filter(t => COMPLETED_STATUSES.has(t.status)), [tasks])
 
   if (cometState) {
-    const phaseTasks = (phase: string) =>
-      tasks.filter(t => t.cometPhase === phase || t.description.toLowerCase().includes(`[${phase}]`))
+    // 无任务时显示空状态
+    if (tasks.length === 0) {
+      return <div style={{ padding: 16, color: '#8b949e', fontSize: 13 }}>暂无任务，输入描述创建新任务</div>
+    }
+
+    // 根任务 = dependsOn 为空的独立任务
+    const taskMap = useMemo(() => {
+      const map = new Map<string, TaskNode[]>()
+      for (const t of tasks) {
+        for (const depId of t.dependsOn) {
+          if (!map.has(depId)) map.set(depId, [])
+          map.get(depId)!.push(t)
+        }
+      }
+      return map
+    }, [tasks])
+    const rootTasks = tasks.filter(t => t.dependsOn.length === 0)
+
+    const renderTaskWithChildren = (task: TaskNode, depth: number = 0): React.ReactNode => {
+      const children = taskMap.get(task.id) || []
+      const isExpanded = expandedParents.has(task.id)
+      return (
+        <div key={task.id}>
+          <div style={{ marginLeft: depth * 16 }}>
+            {renderFlatTask(task, agents, selectedTaskId, onDispatch, onAbort, onSelect, onDelete, hoveredBtnId, setHoveredBtnId, setConfirmDeleteId, expandedAgentTasks, toggleAgent)}
+          </div>
+          {children.length > 0 && (
+            <div style={{ marginLeft: depth * 16 + 16 }}>
+              {children.map(child => renderTaskWithChildren(child, 0))}
+            </div>
+          )}
+        </div>
+      )
+    }
 
     return (
       <div style={{ padding: 8, overflow: 'auto', height: '100%' }}>
@@ -414,32 +446,7 @@ export function TreeView({ tasks, agents, selectedTaskId, onDispatch, onAbort, o
             </div>
           </div>
         )}
-        <ChangeRootNode cometState={cometState}>
-          {PHASE_ORDER.map(phase => (
-            <PhaseNode key={phase} phase={phase} state={cometState.phases[phase]}
-              tasks={phaseTasks(phase)} agents={agents}
-              selectedTaskId={selectedTaskId}
-              onDispatch={onDispatch} onAbort={onAbort} onSelect={onSelect} onDelete={onDelete}
-              hoveredBtnId={hoveredBtnId} setHoveredBtnId={setHoveredBtnId}
-              confirmDeleteId={confirmDeleteId} setConfirmDeleteId={setConfirmDeleteId}
-            />
-          ))}
-          {(() => {
-            const unassigned = tasks.filter(t => !t.cometPhase && !PHASE_ORDER.some(p => t.description.toLowerCase().includes(`[${p}]`)))
-            if (unassigned.length === 0) return null
-            return (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ padding: '10px 12px', borderRadius: 6, background: '#0d1117', border: '1px solid #21262d', opacity: 0.7 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#8b949e', fontWeight: 'bold', fontSize: 13 }}>○</span>
-                    <span style={{ fontSize: 13, color: '#8b949e' }}>其他任务</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#484f58' }}>({unassigned.length})</span>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
-        </ChangeRootNode>
+        {rootTasks.map(task => renderTaskWithChildren(task, 0))}
       </div>
     )
   }
