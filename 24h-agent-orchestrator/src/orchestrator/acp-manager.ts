@@ -128,7 +128,7 @@ export async function createSubAgentSession(
   const title = taskTitle
     ? taskTitle.length > 60 ? taskTitle.slice(0, 57) + '...' : taskTitle
     : `Task: ${taskId}`
-  const result = await sessionApi.create({ title })
+  const result = await sessionApi.create({ title, permission: PERMISSION_RULES[permissionLevel] })
 
   // 检查 SDK 显式错误
   const raw = result as Record<string, unknown> | undefined

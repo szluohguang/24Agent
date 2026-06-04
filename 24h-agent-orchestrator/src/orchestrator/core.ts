@@ -649,7 +649,22 @@ export class Orchestrator {
     if (projectConfig.description) parts.push(`- **描述**: ${projectConfig.description}`)
     const projectContext = parts.length > 0 ? `\n## Project Context\n${parts.join('\n')}` : ''
 
-    const promptText = `你是一个代码开发子 Agent。${projectContext}
+    // 按 phase 构建专属 prompt（如有 SkillLoader 和任务绑定 phase）
+    let promptText: string
+    try {
+      const { SkillLoader } = require('../eagle-engine/SkillLoader')
+      const { renderPhasePrompt } = require('../eagle-engine/prompt-templates')
+      if (task.cometPhase) {
+        const skill = SkillLoader.load(task.cometPhase)
+        const projectCtx = projectConfig.directory
+          ? `工作目录: ${projectConfig.directory}\n目标: ${projectConfig.goal || '-'}\n描述: ${projectConfig.description || '-'}`
+          : ''
+        promptText = renderPhasePrompt({ task, skill, projectContext: projectCtx })
+      } else {
+        throw new Error('No cometPhase')
+      }
+    } catch {
+      promptText = `你是一个代码开发子 Agent。${projectContext}
 
 ## 任务
 ${task.description}
@@ -661,6 +676,7 @@ ${feedbackContext}
 4. 运行测试验证
 5. 更新 tasks.md 标记任务完成
 6. 返回完成摘要（用中文）`
+    }
 
     logger.info('task-dispatch', `Dispatched: ${task.description}`, { taskId, sessionId, model: task.permission })
     await sendTaskPrompt(this.client, sessionId, promptText)
@@ -740,16 +756,28 @@ ${feedbackContext}
         }
       }
 
-      // 阶段子任务完成 → 自动推进 Comet 阶段
+      const mode = this.store.getConfig('eagle_mode') === 'manual' ? 'manual' : 'auto'
+
+      // 阶段子任务完成 → 自动推进 Comet 阶段（携带 mode）
       if (task.status === 'completed' && task.cometPhase && this.eagleEngine) {
         const phaseOrder = ['open', 'design', 'build', 'verify', 'archive']
         const currentIdx = phaseOrder.indexOf(task.cometPhase)
         if (currentIdx >= 0 && currentIdx < phaseOrder.length - 1) {
           const nextPhase = phaseOrder[currentIdx + 1]
-          this.eagleEngine.transition(nextPhase).catch(err => {
+          this.eagleEngine.transition(nextPhase, mode).catch(err => {
             logger.error('comet', `Phase transition ${task.cometPhase}→${nextPhase} failed`, { error: err.message })
             this.addTimeline('system', 'system', 'guard-failed',
               `Guard failed: ${task.cometPhase}→${nextPhase}: ${err.message}`)
+            if (mode === 'auto') {
+              // 自动模式：回退任务，允许重试
+              task.status = 'pending'
+              task.sessionId = undefined
+              this.store.updateTask(task)
+              this.scheduler.updateTaskStatus(task.id, 'pending')
+              this.scheduler.enqueue(task.id)
+              this.addTimeline('system', 'system', 'task-retry',
+                `Re-enqueued ${task.description} after guard failure`)
+            }
           })
         }
       }

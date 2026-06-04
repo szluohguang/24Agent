@@ -44,11 +44,11 @@ export class EagleOrchestrator {
   }
 
   /**
-   * 从 handleSessionComplete 中调用：
-   * 当一个 phase subtask 完成时，自动推进 Comet 阶段。
-   * 先运行代码门禁，通过后再执行状态转换。
+   * 从 handleSessionComplete 中调用。
+   * 当 mode='auto': guard 失败抛出异常让调用者处理
+   * 当 mode='manual': guard 失败广播到 UI 后抛出
    */
-  async transition(targetPhase: string): Promise<void> {
+  async transition(targetPhase: string, mode?: 'auto' | 'manual'): Promise<void> {
     const current = this.engineState.phase
     const phaseDef = this.getPhaseDefinition(current)
     if (!phaseDef || phaseDef.exit.transitionTo !== targetPhase) {
@@ -61,7 +61,6 @@ export class EagleOrchestrator {
     this.engineState.guardStatus = 'running'
     this.emitChange()
 
-    // 使用代码门禁替代 shell 脚本
     const yamlState = await this.getStateMachine().readState()
     const ctx: EagleGuardContext = {
       changeName: this.changeName,
@@ -74,14 +73,49 @@ export class EagleOrchestrator {
       this.engineState.guardStatus = 'failed'
       this.engineState.guardOutput = guardResult.message || 'Guard check failed'
       this.emitChange()
+      if (mode === 'manual') {
+        // 人工模式：广播失败，由 UI 决策下一步
+        throw new Error(`Guard failed: ${guardResult.message}`)
+      }
+      // 自动模式：抛出异常，让 handleSessionComplete 处理回退
       throw new Error(`Guard failed: ${guardResult.message}`)
     }
 
-    // 门禁通过 → 写入 YAML 状态
     this.engineState.guardStatus = 'passed'
     await this.writePhaseTransition(current, targetPhase)
+    this.engineState.phase = targetPhase as CometPhase
+    this.buildPhaseStatus()
+    this.emitChange()
+  }
 
-    // 更新内存状态
+  /** 强制推进 — 跳过 guard 直接转换阶段（人工模式使用） */
+  async forceTransition(targetPhase: string): Promise<void> {
+    const current = this.engineState.phase
+    const phaseDef = this.getPhaseDefinition(current)
+    if (!phaseDef || phaseDef.exit.transitionTo !== targetPhase) {
+      throw new Error(
+        `Invalid force transition: ${current} -> ${targetPhase}. ` +
+        `Allowed: ${phaseDef?.exit.transitionTo || '(none)'}`
+      )
+    }
+    this.engineState.guardStatus = 'passed'
+    await this.writePhaseTransition(current, targetPhase)
+    this.engineState.phase = targetPhase as CometPhase
+    this.buildPhaseStatus()
+    this.emitChange()
+  }
+
+  /** 回退到指定阶段（verify → build 安全回滚） */
+  async rollbackTransition(targetPhase: string): Promise<void> {
+    const phaseOrder: CometPhase[] = ['open', 'design', 'build', 'verify', 'archive']
+    const currentIdx = phaseOrder.indexOf(this.engineState.phase)
+    const targetIdx = phaseOrder.indexOf(targetPhase as CometPhase)
+    if (targetIdx < 0 || targetIdx >= currentIdx) {
+      throw new Error(`Invalid rollback: cannot rollback to ${targetPhase} from ${this.engineState.phase}`)
+    }
+    this.engineState.guardStatus = 'passed'
+    this.engineState.guardOutput = `Rolled back from ${this.engineState.phase} to ${targetPhase}`
+    await this.writePhaseTransition(this.engineState.phase, targetPhase)
     this.engineState.phase = targetPhase as CometPhase
     this.buildPhaseStatus()
     this.emitChange()

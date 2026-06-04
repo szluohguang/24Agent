@@ -416,6 +416,37 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     return { engineAvailable: true, state }
   })
 
+  // ── Eagle Mode ──
+
+  app.get('/api/config/eagle-mode', async () => {
+    const store = (orchestrator as any).store
+    const mode = store?.getConfig?.('eagle_mode') || 'auto'
+    return { mode }
+  })
+
+  app.post<{ Body: { mode: string } }>('/api/config/eagle-mode', async (request) => {
+    const { mode } = request.body
+    if (mode !== 'auto' && mode !== 'manual') {
+      return { success: false, message: 'Mode must be "auto" or "manual"' }
+    }
+    const store = (orchestrator as any).store
+    store?.setConfig?.('eagle_mode', mode)
+    orchestrator.broadcast?.({ type: 'eagle-mode-update', mode })
+    return { success: true }
+  })
+
+  // ── Project Init ──
+
+  app.post('/api/project/init-eagle', async () => {
+    const { SkillChecker } = require('../eagle-engine/SkillChecker')
+    const store = (orchestrator as any).store
+    const config = store?.getProjectConfig?.()
+    if (!config?.directory) return { success: false, message: 'No project directory set' }
+    const checker = new SkillChecker(process.cwd())
+    const result = await checker.initAll(config.directory)
+    return result
+  })
+
   app.post('/api/plugins/update', async () => {
     const results: { command: string; success: boolean; error?: string }[] = []
     for (const cmd of ['git pull', 'npx openspec update']) {
