@@ -34,6 +34,7 @@ export function initDatabase(dbPath?: string): Database.Database {
   db.pragma('foreign_keys = ON')
 
   createTables(db)
+  migrateSchema(db)
 
   return db
 }
@@ -104,6 +105,15 @@ function createTables(database: Database.Database) {
       lastTriggered INTEGER NOT NULL DEFAULT 0
     );
   `)
+}
+
+/** 执行增量 schema 迁移，兼容旧版数据库 */
+function migrateSchema(database: Database.Database) {
+  const cols = database.prepare("PRAGMA table_info('tasks')").all() as { name: string }[]
+  const colNames = cols.map(c => c.name)
+  if (!colNames.includes('cometPhase')) {
+    database.exec("ALTER TABLE tasks ADD COLUMN cometPhase TEXT")
+  }
 }
 
 export function closeDatabase() {
