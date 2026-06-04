@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import fs from 'node:fs'
 import type { FastifyInstance } from 'fastify'
 import type { Orchestrator } from '../orchestrator/core.js'
 import type { PermissionLevel } from '../orchestrator/types.js'
@@ -251,6 +252,9 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
       if (directory !== undefined && typeof directory !== 'string') {
         return reply.status(400).send({ error: 'directory must be a string' })
       }
+      if (directory && !fs.existsSync(directory)) {
+        return reply.status(400).send({ error: `目录不存在: ${directory}` })
+      }
       if (goal !== undefined && typeof goal !== 'string') {
         return reply.status(400).send({ error: 'goal must be a string' })
       }
@@ -258,6 +262,8 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
         return reply.status(400).send({ error: 'description must be a string' })
       }
       orchestrator.setProjectConfig({ directory: directory || '', goal: goal || '', description: description || '' })
+      // 目录变更时同步到 ACP server 和 prompt 上下文
+      if (directory) orchestrator.setProjectDirectory(directory)
       return { success: true }
     },
   )

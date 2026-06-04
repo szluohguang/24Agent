@@ -1,0 +1,17 @@
+workflow: full
+phase: build
+build_mode: direct
+isolation: branch
+verify_mode: null
+base_ref: c74b4f60a8374b34872bec89645409ad4a810e04
+design_doc: null
+plan: null
+verify_result: pending
+verification_report: null
+branch_status: pending
+created_at: 2026-06-04
+verified_at: null
+archived: false
+handoff_context: openspec/changes/project-dir-enforce/.comet/handoff/design-context.json
+handoff_hash: 2afbe024e1e5ca970c58a3076f59b5a12cf29c58d2af900ad0ff26400367085a
+direct_override: true

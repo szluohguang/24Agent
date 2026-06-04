@@ -1,0 +1,6 @@
+- [ ] 1. backend: `PUT /api/project/config` 增加目录存在性验证
+- [ ] 2. backend: `createOpencodeServer` 接受 projectDir，启动时 chdir
+- [ ] 3. backend: `dispatchTask` prompt 中加入工作目录信息
+- [ ] 4. frontend: 创建 ProjectDirPrompt 组件（弹窗+输入+浏览+保存）
+- [ ] 5. frontend: App.tsx 加载时检查目录 → 弹窗；创建任务时阻止无目录
+- [ ] 6. 验证：typecheck + 测试通过

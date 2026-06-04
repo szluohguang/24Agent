@@ -13,6 +13,7 @@ import { SettingsPage } from './components/SettingsPage.js'
 import { ProjectDetail } from './components/ProjectDetail.js'
 import { StatusBar } from './components/StatusBar.js'
 import { LogViewer } from './components/LogViewer.js'
+import { ProjectDirPrompt } from './components/ProjectDirPrompt.js'
 import type { TaskNode, TimelineEntryData, CometEngineState, SystemLogEntry } from './types.js'
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`
@@ -55,6 +56,7 @@ export function App() {
   const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([])
   const [showLogViewer, setShowLogViewer] = useState(false)
   const pendingAutoSelectRef = useRef<string | null>(null)
+  const [showDirPrompt, setShowDirPrompt] = useState(false)
 
   // Initial data loads
   useEffect(() => {
@@ -63,6 +65,9 @@ export function App() {
     }).catch(() => {})
     fetch('/api/logs').then(r => r.json()).then(data => {
       if (data.logs) setSystemLogs(data.logs)
+    }).catch(() => {})
+    fetch('/api/project/config').then(r => r.json()).then(data => {
+      if (!data.directory) setShowDirPrompt(true)
     }).catch(() => {})
   }, [])
 
@@ -232,7 +237,18 @@ export function App() {
     setPermissionLevel(level)
     send({ type: 'set-permission', level })
   }, [send])
-  const handleCreateTask = useCallback((description: string) => {
+  const handleCreateTask = useCallback(async (description: string) => {
+    try {
+      const res = await fetch('/api/project/config')
+      const data = await res.json()
+      if (!data.directory) {
+        setShowDirPrompt(true)
+        return
+      }
+    } catch {
+      setShowDirPrompt(true)
+      return
+    }
     pendingAutoSelectRef.current = description
     send({ type: 'create-task', description, dependsOn: [], cometPhase: cometState?.phase })
   }, [send, cometState])
@@ -478,6 +494,12 @@ export function App() {
         <ProjectDetail onNavigate={(p) => setPage(p)} />
       )}
       <StatusBar logs={systemLogs} onClick={() => setShowLogViewer(true)} />
+      {showDirPrompt && (
+        <ProjectDirPrompt onConfirm={(dir) => {
+          setShowDirPrompt(false)
+          window.location.reload()
+        }} />
+      )}
       {showLogViewer && (
         <LogViewer
           logs={systemLogs}

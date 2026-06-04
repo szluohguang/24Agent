@@ -1,5 +1,6 @@
 import { createOpencodeClient, createOpencodeServer as createOcServer } from '@opencode-ai/sdk/v2'
 import { execSync } from 'node:child_process'
+import fs from 'node:fs'
 import type { PermissionLevel } from './types.js'
 import { Logger } from './logger.js'
 
@@ -63,7 +64,7 @@ export function freePort(port: number): void {
 }
 
 /** 启动 opencode ACP 服务，通过 SDK 内部拉起 `opencode serve` */
-export async function createOpencodeServer() {
+export async function createOpencodeServer(projectDir?: string) {
   freePort(4096)
 
   // opencode serve 默认无需密码，删除密码环境变量避免鉴权
@@ -71,17 +72,33 @@ export async function createOpencodeServer() {
 
   const envModel = process.env['ACP_MODEL'] || process.env['OPENCODE_MODEL'] || 'deepseek/deepseek-chat'
 
+  // 如果设置了项目目录，ACP server 的工作目录将切换到项目目录
+  const originalCwd = process.cwd()
+  if (projectDir) {
+    try {
+      if (fs.existsSync(projectDir)) {
+        process.chdir(projectDir)
+        logger.info('startup', `ACP server working directory: ${projectDir}`)
+      }
+    } catch (e) {
+      logger.warn('startup', `Cannot chdir to project dir: ${projectDir}`, { error: String(e) })
+    }
+  }
+
   const server = await createOcServer({
     hostname: '127.0.0.1',
     port: 4096,
     config: { model: envModel },
   })
 
+  // ACP server 启动后恢复原始工作目录
+  if (projectDir) process.chdir(originalCwd)
+
   const client = createOpencodeClient({
     baseUrl: server.url,
   })
 
-  logger.info('startup', `opencode ACP server: ${server.url} (model: ${envModel})`)
+  logger.info('startup', `opencode ACP server: ${server.url} (model: ${envModel})${projectDir ? ` [projectDir: ${projectDir}]` : ''}`)
   return { client, server }
 }
 

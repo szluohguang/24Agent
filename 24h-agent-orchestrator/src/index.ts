@@ -23,16 +23,26 @@ async function main() {
   const database = initDatabase()
   logger.info('startup', 'SQLite database initialized')
 
-  const { client, server: ocServer } = await createOpencodeServer()
-  logger.info('startup', `opencode ACP server: ${ocServer.url}`)
-
+  // 先创建 orchestrator 读取项目目录配置
   const storageDir = process.env['STORAGE_DIR'] || path.join(process.cwd(), 'data')
-  let orchestrator!: Orchestrator
-  const callbacks = createBroadcastCallbacks(() => orchestrator.getState())
-  orchestrator = new Orchestrator(client, callbacks, database, storageDir)
+  const callbacks = createBroadcastCallbacks(() => orchestrator?.getState())
+  let orchestrator: Orchestrator | undefined
+  const tempClient = await createOpencodeServer()
+  orchestrator = new Orchestrator(tempClient.client, callbacks, database, storageDir)
+
+  // 读取项目目录，重启 ACP server 到项目目录
+  const projectConfig = orchestrator.getProjectConfig()
+  const projectDir = projectConfig.directory || undefined
+  if (projectDir) freePort(4096)
+  tempClient.server.close()
+  const { client, server: ocServer } = await createOpencodeServer(projectDir)
+  ;(orchestrator as any).client = client
+
+  logger.info('startup', `opencode ACP server: ${ocServer.url}${projectDir ? ` (workdir: ${projectDir})` : ''}`)
+
   await orchestrator.start()
 
-  // 清理 HTTP 服务端口的残留进程（本 orchestrator 独占）
+  // 清理 HTTP 服务端口的残留进程
   const port = parseInt(process.env['PORT'] || '3000', 10)
   freePort(port)
 
@@ -43,7 +53,7 @@ async function main() {
 
   const shutdown = async () => {
     logger.info('shutdown', 'Orchestrator shutting down...')
-    orchestrator.stop()
+    orchestrator?.stop()
     ocServer.close()
     await httpServer.close()
     closeDatabase()

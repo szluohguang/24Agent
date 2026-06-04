@@ -415,6 +415,17 @@ export class Orchestrator {
     this.callbacks.onStateChange()
   }
 
+  setProjectDirectory(dir: string): void {
+    try {
+      if (fs.existsSync(dir)) {
+        process.chdir(dir)
+        logger.info('startup', `Project directory changed to: ${dir}`)
+      }
+    } catch (e) {
+      logger.error('task-fail', 'Failed to change project directory', { error: e instanceof Error ? e.message : String(e) })
+    }
+  }
+
   async optimizeText(field: string, text: string): Promise<string> {
     // 直接调用 LLM API，不经过 ACP session
     let apiKey = process.env['DEEPSEEK_API_KEY'] || ''
@@ -620,9 +631,11 @@ export class Orchestrator {
       : ''
 
     const projectConfig = this.store.getProjectConfig()
-    const projectContext = (projectConfig.goal || projectConfig.description)
-      ? `\n## Project Context\n- **Goal**: ${projectConfig.goal || '(not set)'}\n- **Description**: ${projectConfig.description || '(not set)'}`
-      : ''
+    const parts: string[] = []
+    if (projectConfig.directory) parts.push(`- **工作目录**: ${projectConfig.directory}`)
+    if (projectConfig.goal) parts.push(`- **目标**: ${projectConfig.goal}`)
+    if (projectConfig.description) parts.push(`- **描述**: ${projectConfig.description}`)
+    const projectContext = parts.length > 0 ? `\n## Project Context\n${parts.join('\n')}` : ''
 
     const promptText = `You are a code development sub-agent.${projectContext}
 
