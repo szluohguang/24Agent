@@ -356,6 +356,12 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
     },
   )
 
+  // ── File System ──
+
+  app.get('/api/fs/cwd', async () => {
+    return { cwd: process.cwd() }
+  })
+
   // ── System Logs ──
 
   app.get('/api/logs', async () => {

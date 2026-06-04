@@ -1,38 +1,46 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => void }) {
   const [dir, setDir] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dirNameRef = useRef<string>('')
+
+  // 挂载后尝试获取当前工作目录
+  useEffect(() => {
+    fetch('/api/fs/cwd').then(r => r.json()).then(data => {
+      if (data.cwd) setDir(data.cwd)
+    }).catch(() => {})
+  }, [])
 
   const handleBrowse = async () => {
     if ('showDirectoryPicker' in window) {
       try {
         const handle = await (window as any).showDirectoryPicker()
-        // showDirectoryPicker 只返回目录名，不返回完整路径
-        const dirName = handle.name
-        setDir(dirName)
-        setError('已选择目录「' + dirName + '」，请在路径前补全完整路径。\n如: /Users/yourname/' + dirName)
+        dirNameRef.current = handle.name
+        // showDirectoryPicker 只返回目录名（如 "my-project"），不返回完整路径
+        setDir(handle.name)
+        setError('已选目录: ' + handle.name + '。请在文本框补全完整路径（如 /Users/name/' + handle.name + '）')
       } catch (e: any) {
         if (e?.name !== 'AbortError') {
-          setError('目录选择器不可用，请手动输入完整路径: ' + (e?.message || ''))
+          setError('目录选择失败: ' + (e?.message || '未知错误'))
         }
       }
-    } else if (fileInputRef.current) {
-      // 回退: 使用 webkitdirectory
-      fileInputRef.current.click()
     } else {
-      setError('当前浏览器不支持目录选择，请手动输入完整路径')
+      // 回退: webkitdirectory — 仅获取目录名片段
+      fileInputRef.current?.click()
     }
   }
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
-    // webkitdirectory 不暴露完整路径，仅用于确认用户已选择目录
-    setDir('')
-    setError('检测到目录已选择。浏览器安全限制无法读取完整路径，\n请手动输入完整目录路径（如 /Users/yourname/project）后点击确认。')
+    // webkitRelativePath 形如 "src/index.ts"，取第一段作为目录名提示
+    const seg = files[0].webkitRelativePath?.split('/')[0] || files[0].name || ''
+    dirNameRef.current = seg
+    setDir(seg)
+    setError('已选目录包含文件: ' + seg + '。请补全完整路径（如 /Users/name/' + seg + '）后点击确认')
   }
 
   const handleSave = async () => {
