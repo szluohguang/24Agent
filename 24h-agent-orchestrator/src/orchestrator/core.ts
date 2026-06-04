@@ -93,7 +93,15 @@ export class Orchestrator {
 
     // Comet 引擎初始化（测试环境中可能无对应文件，静默跳过）
     try {
-      const orchestrationPath = path.join(process.cwd(), 'comet-orchestration.json')
+      const candidatePaths = [
+        path.join(process.cwd(), 'comet-orchestration.json'),
+        path.join(process.cwd(), '..', 'comet-orchestration.json'),
+        path.join(__dirname, '..', '..', '..', 'comet-orchestration.json'),
+      ]
+      let orchestrationPath = ''
+      for (const p of candidatePaths) {
+        if (fs.existsSync(p)) { orchestrationPath = p; break }
+      }
       const yamlRoot = path.join(process.cwd(), 'openspec', 'changes')
       let activeChange = 'comet-workflow-ui'
       try {
@@ -476,23 +484,44 @@ export class Orchestrator {
     this.addTimeline('system', 'system', 'task-add', `Task added: ${description}`)
 
     // 根任务（无 dependsOn）自动创建阶段子任务
-    if (dependsOn.length === 0 && !cometPhase) {
-      this.createPhaseSubtasks(id, description)
+    if (dependsOn.length === 0) {
+      const hasSubtasks = this.createPhaseSubtasks(id, description)
+      if (hasSubtasks) {
+        // 子任务创建后额外推送一次状态更新，确保前端能收到
+        this.callbacks.onStateChange()
+      }
     }
 
     this.callbacks.onStateChange()
     return id
   }
 
-  private createPhaseSubtasks(rootTaskId: string, description: string): void {
+  private createPhaseSubtasks(rootTaskId: string, description: string): boolean {
     try {
-      const orchPath = path.join(process.cwd(), 'comet-orchestration.json')
-      if (!fs.existsSync(orchPath)) return
-      const orch = JSON.parse(fs.readFileSync(orchPath, 'utf-8')) as { phases?: Record<string, { label?: string }> }
-      if (!orch.phases) return
+      // 在多个可能路径中查找 comet-orchestration.json
+      const candidatePaths = [
+        path.join(process.cwd(), 'comet-orchestration.json'),
+        path.join(process.cwd(), '..', 'comet-orchestration.json'),
+        path.join(__dirname, '..', '..', '..', 'comet-orchestration.json'),
+      ]
+      let orchPath = ''
+      for (const p of candidatePaths) {
+        if (fs.existsSync(p)) { orchPath = p; break }
+      }
+      if (!orchPath) {
+        logger.warn('task-retry', 'comet-orchestration.json not found (tried: ' + candidatePaths.join(', ') + '), skip subtask creation')
+        return false
+      }
+      const content = fs.readFileSync(orchPath, 'utf-8')
+      const orch = JSON.parse(content) as { phases?: Record<string, { label?: string }> }
+      if (!orch.phases) {
+        logger.warn('task-retry', 'comet-orchestration.json has no phases, skip subtask creation')
+        return false
+      }
 
       const phaseOrder = ['open', 'design', 'build', 'verify', 'archive']
       let prevId = rootTaskId
+      let created = 0
       for (const phase of phaseOrder) {
         if (!orch.phases[phase]) continue
         const label = orch.phases[phase].label || phase
@@ -508,11 +537,15 @@ export class Orchestrator {
         this.store.insertTask(subTask)
         this.scheduler.registerTask(subTask)
         this.scheduler.enqueue(subId)
-        logger.info('task-create', `Subtask [${label}]: ${description}`, { taskId: subId, dependsOn: [prevId] })
+        logger.info('task-create', `Phase subtask [${label}] created for root ${rootTaskId}`, { taskId: subId, dependsOn: [prevId], rootTaskId, description })
         prevId = subId
+        created++
       }
+      logger.info('task-create', `Created ${created} phase subtasks for root task ${rootTaskId}`, { rootTaskId, description })
+      return created > 0
     } catch (e) {
-      logger.error('task-fail', 'Failed to create phase subtasks', { error: e instanceof Error ? e.message : String(e) })
+      logger.error('task-fail', 'Failed to create phase subtasks', { error: e instanceof Error ? e.message : String(e), rootTaskId, description })
+      return false
     }
   }
 

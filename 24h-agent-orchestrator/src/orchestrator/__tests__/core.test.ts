@@ -149,7 +149,11 @@ describe('Orchestrator', () => {
       orchestrator.addTask('Task A')
       orchestrator.addTask('Task B')
       const state = orchestrator.getState()
-      expect(state.tasks).toHaveLength(2)
+      // 每个根任务自动创建 5 个 phase 子任务，共 2 × 6 = 12
+      expect(state.tasks.length).toBeGreaterThanOrEqual(2)
+      // 至少包含两个根任务
+      const rootTasks = state.tasks.filter((t: any) => !t.dependsOn || t.dependsOn.length === 0)
+      expect(rootTasks).toHaveLength(2)
     })
   })
 
