@@ -2,6 +2,8 @@
 comet_change: task-tree-rework
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-04-task-tree-rework
+status: final
 ---
 
 ## 修改点

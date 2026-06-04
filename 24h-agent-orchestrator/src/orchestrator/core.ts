@@ -159,7 +159,6 @@ export class Orchestrator {
       this.createEventHandlers(),
       this.store,
       {
-        onTaskRecovered: (taskId) => this.scheduler.enqueue(taskId),
         onSseReconnected: () => logger.info('shutdown', 'SSE reconnected (from orchestrator)'),
       },
     )
@@ -352,7 +351,7 @@ export class Orchestrator {
     }
 
     // 启动时恢复未完成任务（pending / running / failed 状态的任务）
-    await this.recovery.recoverStartupTasks(async (taskId) => this.dispatchTask(taskId))
+    await this.recovery.recoverStartupTasks()
 
     // 如果已有 WeChat 登录态，启动长轮询监听
     if (this.wechatManager.isLoggedIn()) {

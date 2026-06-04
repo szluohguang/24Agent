@@ -32,7 +32,6 @@ describe('Recovery', () => {
       mockEventHandlers,
       mockStore,
       {
-        onTaskRecovered: vi.fn() as (taskId: string) => void,
         onSseReconnected: vi.fn() as () => void,
       },
       5,
@@ -74,7 +73,6 @@ describe('Recovery', () => {
 
     it('returns false when maxReconnectAttempts reached', async () => {
       recovery = new Recovery(mockClient, mockEventHandlers, mockStore, {
-        onTaskRecovered: vi.fn() as (taskId: string) => void,
         onSseReconnected: vi.fn() as () => void,
       }, 2)
       ;(recovery as unknown as Record<string, unknown>)['baseDelay'] = 5
@@ -106,7 +104,7 @@ describe('Recovery', () => {
   })
 
   describe('recoverStartupTasks', () => {
-    it('recovers pending, running, and failed tasks from store', async () => {
+    it('resets all pending/running/failed tasks to pending, does not auto-dispatch', async () => {
       const pendingTask: TaskState = {
         id: 't1', description: 'p1', status: 'pending', dependsOn: [],
         retryCount: 0, maxRetries: 3, createdAt: 0, updatedAt: 0,
@@ -123,7 +121,6 @@ describe('Recovery', () => {
         priority: 0, permission: 'safe', budget: 50,
       }
 
-      const mockDispatch = vi.fn()
       const storeMock = mockStore as unknown as Record<string, ReturnType<typeof vi.fn>>
       storeMock['getTasksByStatus'].mockImplementation((status: string) => {
         if (status === 'pending') return [pendingTask]
@@ -133,11 +130,17 @@ describe('Recovery', () => {
       })
       storeMock['getAgentsByTaskId'].mockReturnValue([])
 
-      await recovery.recoverStartupTasks(mockDispatch)
-      expect(storeMock['updateTask']).toHaveBeenCalled()
+      await recovery.recoverStartupTasks()
+      // 所有任务均应被更新（重置为 pending）
+      expect(storeMock['updateTask']).toHaveBeenCalledTimes(3)
+      // 验证状态被重置
+      expect(pendingTask.status).toBe('pending')
+      expect(runningTask.status).toBe('pending')
+      expect(failedTask.status).toBe('pending')
+      expect(runningTask.retryCount).toBe(0)
     })
 
-    it('skips failed tasks with exhausted retries', async () => {
+    it('resets exhausted tasks too (no auto-skip)', async () => {
       const exhaustedTask: TaskState = {
         id: 't4', description: 'exhausted', status: 'failed', dependsOn: [],
         retryCount: 3, maxRetries: 3, createdAt: 0, updatedAt: 0,
@@ -150,8 +153,10 @@ describe('Recovery', () => {
         return []
       })
 
-      await recovery.recoverStartupTasks(vi.fn())
-      expect(storeMock['updateTask']).not.toHaveBeenCalled()
+      await recovery.recoverStartupTasks()
+      // 重置时所有任务都被更新
+      expect(storeMock['updateTask']).toHaveBeenCalled()
+      expect(exhaustedTask.status).toBe('pending')
     })
   })
 })

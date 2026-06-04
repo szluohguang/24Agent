@@ -7,7 +7,6 @@ import { Logger } from './logger.js'
 const logger = Logger.getInstance()
 
 export interface RecoveryCallbacks {
-  onTaskRecovered: (taskId: string) => void
   onSseReconnected: () => void
 }
 
@@ -98,40 +97,35 @@ export class Recovery {
 
   // ── 启动恢复 ──
 
-  async recoverStartupTasks(dispatchTask: (taskId: string) => Promise<void>): Promise<void> {
+  async recoverStartupTasks(): Promise<void> {
     const pendingTasks = this.store.getTasksByStatus('pending')
     const runningTasks = this.store.getTasksByStatus('running')
     const failedTasks = this.store.getTasksByStatus('failed')
 
-    for (const task of pendingTasks) {
-      this.callbacks.onTaskRecovered(task.id)
-    }
+    const total = pendingTasks.length + runningTasks.length + failedTasks.length
+    if (total === 0) return
 
-    for (const task of runningTasks) {
-      const agents = this.store.getAgentsByTaskId(task.id)
-      for (const agent of agents) {
-        try {
-          const { abortSession } = await import('./acp-manager.js')
-          await abortSession(this.client, agent.sessionId)
-        } catch {
-          // ignore
+    // 恢复策略：重置所有任务到 pending 状态，不自动分发
+    // 用户可通过 UI 手动点击 Dispatch 按钮决定是否继续
+    for (const task of [...pendingTasks, ...runningTasks, ...failedTasks]) {
+      try {
+        // 先中止遗留的 ACP 会话
+        const agents = this.store.getAgentsByTaskId(task.id)
+        for (const agent of agents) {
+          try {
+            const { abortSession } = await import('./acp-manager.js')
+            await abortSession(this.client, agent.sessionId)
+          } catch { /* ignore stale sessions */ }
         }
-      }
-      task.retryCount++
-      task.status = 'running'
+      } catch { /* ignore */ }
+      task.status = 'pending'
+      task.error = undefined
+      task.sessionId = undefined
+      task.retryCount = 0
       this.store.updateTask(task)
-      await dispatchTask(task.id)
     }
 
-    for (const task of failedTasks) {
-      if (task.retryCount < task.maxRetries) {
-        task.retryCount++
-        task.status = 'pending'
-        task.error = undefined
-        this.store.updateTask(task)
-        this.callbacks.onTaskRecovered(task.id)
-      }
-    }
+    logger.info('startup', `Recovery: ${total} pending/running/failed tasks reset to pending. User must manually dispatch.`)
   }
 
   stop(): void {
