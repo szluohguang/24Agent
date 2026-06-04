@@ -1,0 +1,243 @@
+<div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:1200px;margin:auto">
+
+  <h2 style="color:#58a6ff;margin:0 0 4px">左侧任务列表 — A+B 组合方案</h2>
+  <p style="color:#8b949e;margin:0 0 20px;font-size:14px">树形展开 + 步骤进度条 + 状态分段</p>
+
+  <!-- 三栏布局预览 -->
+  <div style="display:flex;gap:16px;min-height:500px">
+
+    <!-- LEFT: 任务列表 -->
+    <div style="flex:0 0 340px;background:#0d1117;border:1px solid #30363d;border-radius:8px;display:flex;flex-direction:column;overflow:hidden">
+
+      <!-- 空状态 -->
+      <div id="empty-state" style="padding:40px 20px;text-align:center;color:#484f58;font-size:13px;display:none">
+        <div style="font-size:40px;margin-bottom:12px">📋</div>
+        <div>暂无任务，输入描述创建新任务</div>
+      </div>
+
+      <!-- 任务列表 -->
+      <div id="task-list" style="flex:1;overflow:auto;padding:8px">
+
+        <!-- ===== 任务卡片 1 ===== -->
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;margin-bottom:8px">
+          <!-- 根任务 -->
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-bottom:1px solid #21262d"
+               onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+            <span style="color:#58a6ff;font-size:10px">●</span>
+            <div style="flex:1;min-width:0">
+              <div style="color:#c9d1d9;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">/comet 开发markdown的查看、编辑工具</div>
+              <!-- 步骤进度条 -->
+              <div style="margin-top:6px">
+                <div style="display:flex;gap:3px;margin-bottom:2px">
+                  <div style="flex:1;height:3px;background:#238636;border-radius:2px" title="开启 ✓"></div>
+                  <div style="flex:1;height:3px;background:#d29922;border-radius:2px" title="设计 ●"></div>
+                  <div style="flex:1;height:3px;background:#21262d;border-radius:2px" title="构建 ○"></div>
+                  <div style="flex:1;height:3px;background:#21262d;border-radius:2px" title="验证 ○"></div>
+                  <div style="flex:1;height:3px;background:#21262d;border-radius:2px" title="归档 ○"></div>
+                </div>
+                <div style="display:flex;gap:0;font-size:9px;color:#484f58">
+                  <span style="flex:1;color:#3fb950">✓开启</span>
+                  <span style="flex:1;color:#d29922">●设计</span>
+                  <span style="flex:1">○构建</span>
+                  <span style="flex:1">○验证</span>
+                  <span style="flex:1">○归档</span>
+                </div>
+              </div>
+            </div>
+            <span style="background:#23863622;color:#3fb950;border:1px solid #238636;border-radius:10px;padding:1px 8px;font-size:10px;white-space:nowrap">running</span>
+          </div>
+
+          <!-- 子任务列表（缩进） -->
+          <div>
+            <!-- 子任务 1: 已完成 -->
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px 6px 28px;font-size:12px;cursor:pointer"
+                 onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+              <span style="color:#8b949e;font-size:10px;cursor:pointer">▶</span>
+              <span style="width:6px;height:6px;border-radius:50%;background:#238636;display:inline-block"></span>
+              <span style="color:#8b949e;flex:1;text-decoration:line-through;text-decoration-color:#484f58">[开启]</span>
+              <span style="color:#3fb950;font-size:10px">✓</span>
+            </div>
+            <!-- 子任务 2: 进行中 -->
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px 6px 28px;font-size:12px;background:#161b22;cursor:pointer;border-left:2px solid #58a6ff"
+                 onmouseover="this.style.background='#1c2333'" onmouseout="this.style.background='#161b22'">
+              <span style="color:#d29922;font-size:10px;cursor:pointer">▼</span>
+              <span style="width:6px;height:6px;border-radius:50%;background:#58a6ff;display:inline-block"></span>
+              <span style="color:#c9d1d9;flex:1;font-weight:500">[深度设计]</span>
+              <button style="background:#238636;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer">▶</button>
+            </div>
+            <!-- 子任务 3: 待处理 -->
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px 6px 28px;font-size:12px;opacity:0.5;cursor:pointer"
+                 onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+              <span style="color:#484f58;font-size:10px;cursor:pointer">▶</span>
+              <span style="width:6px;height:6px;border-radius:50%;border:2px solid #484f58;display:inline-block"></span>
+              <span style="color:#484f58;flex:1">[计划与构建]</span>
+            </div>
+            <!-- 子任务 4 -->
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px 6px 28px;font-size:12px;opacity:0.5;cursor:pointer"
+                 onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+              <span style="color:#484f58;font-size:10px;cursor:pointer">▶</span>
+              <span style="width:6px;height:6px;border-radius:50%;border:2px solid #484f58;display:inline-block"></span>
+              <span style="color:#484f58;flex:1">[验证与收尾]</span>
+            </div>
+            <!-- 子任务 5 -->
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px 6px 28px;font-size:12px;opacity:0.5;cursor:pointer"
+                 onmouseover="this.style.background='#161b22'" onmouseout="this.style.background='transparent'">
+              <span style="color:#484f58;font-size:10px;cursor:pointer">▶</span>
+              <span style="width:6px;height:6px;border-radius:50%;border:2px solid #484f58;display:inline-block"></span>
+              <span style="color:#484f58;flex:1">[归档]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 任务卡片 2 ===== -->
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;margin-bottom:8px;opacity:0.6">
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px">
+            <span style="color:#3fb950;font-size:12px">✓</span>
+            <div style="flex:1;min-width:0">
+              <div style="color:#8b949e;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">测试任务</div>
+              <!-- 已完成进度条 -->
+              <div style="margin-top:6px">
+                <div style="display:flex;gap:3px;margin-bottom:2px">
+                  <div style="flex:1;height:3px;background:#3fb950;border-radius:2px"></div>
+                  <div style="flex:1;height:3px;background:#3fb950;border-radius:2px"></div>
+                  <div style="flex:1;height:3px;background:#3fb950;border-radius:2px"></div>
+                  <div style="flex:1;height:3px;background:#3fb950;border-radius:2px"></div>
+                  <div style="flex:1;height:3px;background:#3fb950;border-radius:2px"></div>
+                </div>
+                <div style="display:flex;gap:0;font-size:9px;color:#3fb950">
+                  <span style="flex:1">✓开启</span>
+                  <span style="flex:1">✓设计</span>
+                  <span style="flex:1">✓构建</span>
+                  <span style="flex:1">✓验证</span>
+                  <span style="flex:1">✓归档</span>
+                </div>
+              </div>
+            </div>
+            <span style="background:#3fb95022;color:#3fb950;border:1px solid #3fb950;border-radius:10px;padding:1px 8px;font-size:10px;white-space:nowrap">completed</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 底部统计 -->
+      <div style="padding:8px 12px;border-top:1px solid #21262d;display:flex;gap:16px;font-size:11px;background:#161b22">
+        <span style="color:#58a6ff">进行中 <strong>1</strong></span>
+        <span style="color:#3fb950">已完成 <strong>1</strong></span>
+        <span style="color:#484f58">待处理 <strong>3</strong></span>
+        <span style="margin-left:auto;color:#8b949e">共 2 任务</span>
+      </div>
+
+      <!-- 添加任务输入框 -->
+      <div style="padding:8px 12px;border-top:1px solid #30363d;display:flex;gap:8px;background:#161b22">
+        <input type="text" placeholder="输入任务描述..." style="flex:1;padding:6px 10px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;font-size:12px" />
+        <button style="background:#238636;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:12px;cursor:pointer">添加</button>
+      </div>
+    </div>
+
+    <!-- MIDDLE: 控制台 -->
+    <div style="flex:1;background:#0d1117;border:1px solid #30363d;border-radius:8px;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:8px 12px;border-bottom:1px solid #30363d;font-size:13px;color:#c9d1d9;font-weight:600;background:#161b22">
+        控制台 — [深度设计] 开发markdown的查看、编辑工具
+      </div>
+      <div style="flex:1;padding:12px;overflow:auto;font-size:12px;line-height:1.6">
+        <div style="color:#8b949e;margin-bottom:8px">
+          <span style="color:#58a6ff">🧠 思考中</span> · 正在分析需求...
+        </div>
+        <div style="color:#8b949e;margin-bottom:8px">
+          <span style="color:#d29922">🔧 工具调用</span> · read OpenSpec documents
+        </div>
+        <div style="color:#c9d1d9;margin-bottom:8px">
+          正在查看 openspec/changes/ 目录结构...
+        </div>
+        <div style="color:#c9d1d9;margin-bottom:8px">
+          <span style="color:#3fb950">✅</span> 任务完成，共修改 3 个文件
+        </div>
+      </div>
+      <div style="padding:8px 12px;border-top:1px solid #30363d;display:flex;gap:8px;background:#161b22">
+        <input type="text" placeholder="输入跟进问题..." style="flex:1;padding:6px 10px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;font-size:12px" />
+        <button style="background:#1f6feb;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:12px;cursor:pointer">继续</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: 监控面板 -->
+    <div style="flex:0 0 280px;background:#0d1117;border:1px solid #30363d;border-radius:8px;display:flex;flex-direction:column;overflow:hidden">
+      <!-- Comet 状态 -->
+      <div style="padding:10px 12px;border-bottom:1px solid #30363d;background:#161b22">
+        <div style="font-size:12px;font-weight:600;color:#c9d1d9;margin-bottom:6px">Comet</div>
+        <div style="font-size:11px;color:#8b949e;margin-bottom:4px">
+          <span style="color:#c9d1d9">comet-workflow-ui</span>
+          <span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;margin-left:4px;background:#238636;color:#fff">full</span>
+        </div>
+        <div style="font-size:11px;color:#8b949e;margin-bottom:4px">
+          阶段: <span style="color:#d29922;font-weight:600">design</span>
+        </div>
+        <!-- 阶段圆点 -->
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:2px;font-size:10px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#238636;display:inline-block;border:2px solid #238636"></span>
+            <span style="color:#3fb950">open</span>
+          </span>
+          <span style="color:#30363d;font-size:8px">●</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:10px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#58a6ff;display:inline-block;border:2px solid #58a6ff"></span>
+            <span style="color:#c9d1d9">design</span>
+          </span>
+          <span style="color:#30363d;font-size:8px">●</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:10px">
+            <span style="width:7px;height:7px;border-radius:50%;background:transparent;display:inline-block;border:2px solid #30363d"></span>
+            <span style="color:#484f58">build</span>
+          </span>
+          <span style="color:#30363d;font-size:8px">●</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:10px">
+            <span style="width:7px;height:7px;border-radius:50%;background:transparent;display:inline-block;border:2px solid #30363d"></span>
+            <span style="color:#484f58">verify</span>
+          </span>
+          <span style="color:#30363d;font-size:8px">●</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:10px">
+            <span style="width:7px;height:7px;border-radius:50%;background:transparent;display:inline-block;border:2px solid #30363d"></span>
+            <span style="color:#484f58">archive</span>
+          </span>
+        </div>
+        <div style="font-size:11px;color:#8b949e;margin-top:4px">
+          Guard: <span style="color:#58a6ff;font-weight:600">idle</span>
+        </div>
+      </div>
+
+      <!-- 预算 -->
+      <div style="padding:6px 12px;border-bottom:1px solid #30363d;font-size:11px;color:#d29922;font-family:monospace;background:#0d1117">
+        预算: ¥1.50 / ¥10.00  ███░░░░░░░  15%
+      </div>
+
+      <!-- Agent 列表 -->
+      <div style="flex:1;overflow:auto;padding:4px 0">
+        <div style="padding:6px 12px;font-size:11px;color:#8b949e;border-bottom:1px solid #21262d">Agent 列表</div>
+        <div style="padding:8px 12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #21262d;font-size:11px">
+          <span style="width:6px;height:6px;border-radius:50%;background:#238636;display:inline-block"></span>
+          <span style="color:#8b949e;font-family:monospace">[ses_16f0]</span>
+          <span style="color:#c9d1d9;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">开发markdown工具</span>
+          <span style="color:#238636">✓ healthy</span>
+        </div>
+        <div style="padding:24px;text-align:center;color:#484f58;font-size:11px;display:none">暂无 Agent</div>
+      </div>
+
+      <!-- 底部状态栏（模拟） -->
+      <div style="height:24px;background:#161b22;border-top:1px solid #30363d;display:flex;align-items:center;padding:0 10px;font-size:10px;border-left:3px solid #238636;flex-shrink:0">
+        <span style="width:6px;height:6px;border-radius:50%;background:#238636;display:inline-block;margin-right:6px"></span>
+        <span style="color:#8b949e">[health] 系统运行正常</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:20px;padding:12px 16px;background:#161b22;border:1px solid #30363d;border-radius:8px">
+    <p style="color:#c9d1d9;font-size:13px;margin:0 0 8px;font-weight:600">✅ 交互确认清单</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:#8b949e">
+      <div>☐ 树形展开（▶/▼ 折叠子任务）</div>
+      <div>☐ 根任务内嵌 5 阶段进度条</div>
+      <div>☐ 进行中/已完成/待处理分段统计</div>
+      <div>☐ 单击任务 → 选中 + 控制台切换</div>
+      <div>☐ Dispatch 按钮仅对当前阶段可操作</div>
+      <div>☐ 底部任务输入框创建新根任务</div>
+    </div>
+  </div>
+</div>
