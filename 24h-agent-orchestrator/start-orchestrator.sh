@@ -9,15 +9,25 @@ echo " Port: 3000"
 echo "==============================="
 echo ""
 
-echo "[orchestrator] Checking port 4096..."
-PID=$(lsof -ti tcp:4096 2>/dev/null || true)
-if [ -n "$PID" ]; then
-  echo "[orchestrator] Port 4096 in use by PID $PID, killing..."
-  kill -9 "$PID" 2>/dev/null || true
-  echo "[orchestrator] Killed process $PID"
-else
-  echo "[orchestrator] Port 4096 is free"
+echo "[orchestrator] Cleaning stale processes..."
+for port in 3000 4096; do
+  PID=$(lsof -ti tcp:$port 2>/dev/null || true)
+  if [ -n "$PID" ]; then
+    echo "[orchestrator] Port $port in use by PID $PID, killing..."
+    kill -9 "$PID" 2>/dev/null || true
+    sleep 1
+  else
+    echo "[orchestrator] Port $port is free"
+  fi
+done
+# 额外清理残留 tsx 进程
+TSX_PIDS=$(ps aux | grep 'tsx' | grep -v grep | awk '{print $2}' 2>/dev/null || true)
+if [ -n "$TSX_PIDS" ]; then
+  echo "[orchestrator] Killing stale tsx processes: $TSX_PIDS"
+  kill -9 $TSX_PIDS 2>/dev/null || true
+  sleep 1
 fi
+echo "[orchestrator] Cleanup complete"
 echo ""
 
 echo "[orchestrator] Starting..."
