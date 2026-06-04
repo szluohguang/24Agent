@@ -591,6 +591,7 @@ export class Orchestrator {
         taskId,
         model,
         this.permissionLevel,
+        task.description,
       )
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'ACP session creation failed'

@@ -90,7 +90,7 @@ describe('Orchestrator', () => {
       expect(task!.sessionId).toBe('session-abc-123')
 
       expect(mockClient.mocks.sessionCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ title: expect.stringContaining(id) }),
+        expect.objectContaining({ title: 'Dispatch test' }),
       )
       expect(mockClient.mocks.sessionPrompt).toHaveBeenCalled()
       expect(callbacks.onStateChange).toHaveBeenCalled()

@@ -120,13 +120,15 @@ export async function createSubAgentSession(
   taskId: string,
   model: { providerID: string; modelID: string },
   permissionLevel: PermissionLevel,
+  taskTitle?: string,
 ) {
   // SDK v2 中有两个 session 类: session(基本) 和 session2(完整 CRUD + ACP)
   // create/prompt/messages/diff/abort 都在 session2 上
   const sessionApi = client.session2 ?? client.session
-  const result = await sessionApi.create({
-    title: `Task: ${taskId}`,
-  })
+  const title = taskTitle
+    ? taskTitle.length > 60 ? taskTitle.slice(0, 57) + '...' : taskTitle
+    : `Task: ${taskId}`
+  const result = await sessionApi.create({ title })
 
   // 检查 SDK 显式错误
   const raw = result as Record<string, unknown> | undefined

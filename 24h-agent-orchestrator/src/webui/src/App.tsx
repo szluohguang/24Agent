@@ -406,7 +406,6 @@ export function App() {
               onDispatch={handleDispatch} onAbort={handleAbort}
               onDelete={handleDelete}
               onSelect={handleSelectTask}
-              cometState={cometState ?? undefined}
             />
           </div>
           <form onSubmit={handleSubmitTask} style={{
