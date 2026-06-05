@@ -2,6 +2,8 @@
 comet_change: comet-code-engine
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-05-comet-code-engine
+status: final
 ---
 
 ## Eagle 引擎架构
