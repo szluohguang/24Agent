@@ -122,7 +122,7 @@ export class EagleOrchestrator {
   }
 
   /**
-   * 持久化阶段转换到 .comet.yaml
+    * 持久化阶段转换到 .eagle.yaml
    */
   private async writePhaseTransition(current: CometPhase, target: string): Promise<void> {
     const eventMap: Record<string, string> = {

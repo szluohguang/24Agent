@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import os from 'node:os'
 import { exec } from 'child_process'
 
 export interface SkillCheckResult {
@@ -22,7 +23,7 @@ const SUPERPOWER_SKILLS = [
   'executing-plans',
   'using-git-worktrees',
 ]
-const GLOBAL_SUPERPOWERS_DIR = 'C:\\Users\\luo\\.config\\opencode\\skills\\superpowers'
+const GLOBAL_SUPERPOWERS_DIR = path.join(os.homedir(), '.config', 'opencode', 'skills', 'superpowers')
 
 export class SkillChecker {
   constructor(private baseDir: string) {}

@@ -117,7 +117,7 @@ async function handleWsMessage(
       socket.send(JSON.stringify({ type: 'budget-reset' }))
       break
     case 'comet-decision':
-      const engine2 = (orchestrator as any).cometEngine
+      const engine2 = (orchestrator as any).eagleEngine
       if (engine2) {
         await engine2.evaluateDecision({ decisionId: msg.decisionId as string, choice: msg.choice as string })
       }

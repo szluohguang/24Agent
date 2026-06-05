@@ -61,6 +61,8 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
         setError(data.error || '保存失败')
         return
       }
+      // 保存成功后触发 Eagle 技能安装
+      fetch('/api/project/init-eagle', { method: 'POST' }).catch(() => {})
       onConfirm(dir.trim())
     } catch {
       setError('网络错误，请重试')

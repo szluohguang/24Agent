@@ -65,8 +65,23 @@
 - [x] 决策卡片交互（人工模式）
 - [x] Skill 加载状态显示
 
-## Phase 9: 测试 & 验证
+## Phase 9: 命名一致性修复
 
-- [x] `eagle-engine/__tests__/` 11 个测试全部通过
+- [x] `.eagle.yaml` 替代 `.comet.yaml`（state-machine / core.ts / orchestrator）
+- [x] `SkillChecker.ts` Windows 硬编码路径改为 `os.homedir()` 跨平台
+- [x] `prompt-templates.ts` 反向依赖 `../webui/src/types` 修复
+- [x] `webui/types.ts` 增加 `EagleEngineState` re-export
+- [x] `state-machine.ts` 移除多余 async 关键字
+- [x] `guards.ts` 动态 `import('crypto')` 改为静态 import
+- [x] `HealthDashboard.tsx` 模式/Guard 状态动态读取
+- [x] `ProjectDirPrompt.tsx` 目录保存后调用 `POST /api/project/init-eagle`
+- [x] `useWebSocket.ts` WsMessage 增加 `eagle-state-update` / `eagle-mode-update`
+- [x] `App.tsx` 增加 `eagle-state-update` / `eagle-mode-update` 处理器
+- [x] `websocket.ts` `cometEngine` → `eagleEngine` 修复
+- [x] `core.ts` WS 广播 `comet-state-update` → `eagle-state-update`
+- [x] `orchestrator.ts` 注释 `.comet.yaml` → `.eagle.yaml`
+
+## Phase 10: 测试 & 验证
+
+- [x] `eagle-engine/__tests__/` 测试全部通过
 - [x] TypeScript 类型检查零错误
-- [x] `openspec validate` 确认通过

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useIntl } from 'react-intl'
 import type { CometEngineState, CometPhase, TaskNode } from '../types'
 
@@ -165,6 +165,12 @@ function ConnectorLine({ passed, failed }: { passed?: boolean; failed?: boolean 
 }
 
 export function HealthDashboard({ agents, tasks, stale, budget, cometState }: { agents: AgentHealthRow[]; tasks?: TaskNode[]; stale: boolean; budget?: { spent: number; limit: number }; cometState?: CometEngineState }) {
+  const [eagleMode, setEagleMode] = useState('auto')
+  useEffect(() => {
+    fetch('/api/config/eagle-mode').then(r => r.json()).then(d => {
+      if (d.mode) setEagleMode(d.mode)
+    }).catch(() => {})
+  }, [])
   const dedupedAgents = agents.filter((a, i, arr) => arr.findIndex((x) => x.taskId === a.taskId) === i)
   const budgetRatio = budget && budget.limit > 0 ? budget.spent / budget.limit : 0
   const budgetFilled = Math.round(budgetRatio * 10)
@@ -216,8 +222,10 @@ export function HealthDashboard({ agents, tasks, stale, budget, cometState }: { 
           }}>Eagle</span>
         </div>
         <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 4 }}>
-          模式: <span style={{ color: '#58a6ff', fontWeight: 600 }}>auto</span>
-          <span style={{ marginLeft: 8 }}>技能: <span style={{ color: '#3fb950' }}>✓ 已加载</span></span>
+          模式: <span style={{ color: eagleMode === 'manual' ? '#d29922' : '#58a6ff', fontWeight: 600 }}>{eagleMode}</span>
+          <span style={{ marginLeft: 8 }}>Guard: <span style={{ color: !cometState || cometState.guardStatus === 'idle' ? '#484f58' : cometState.guardStatus === 'passed' ? '#3fb950' : cometState.guardStatus === 'failed' ? '#f85149' : '#58a6ff' }}>
+            {!cometState ? '—' : cometState.guardStatus === 'idle' ? '空闲' : cometState.guardStatus === 'running' ? '执行中' : cometState.guardStatus === 'passed' ? '通过' : '失败'}
+          </span></span>
         </div>
         {!cometState || cometState.changeName === '(无活跃变更)' ? (
           <div style={{ fontSize: 11, color: '#8b949e', padding: '2px 0 6px' }}>

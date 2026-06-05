@@ -21,13 +21,13 @@ const TRANSITIONS: Record<CometPhase, Record<string, CometPhase>> = {
 export class EagleStateMachine {
   constructor(private yamlPath: string) {}
 
-  async readState(): Promise<CometYamlState> {
+  readState(): CometYamlState {
     const raw = fs.readFileSync(this.yamlPath, 'utf-8')
     return yaml.load(raw) as CometYamlState
   }
 
-  async transition(event: EagleStateEvent): Promise<void> {
-    const state = await this.readState()
+  transition(event: EagleStateEvent): void {
+    const state = this.readState()
     const allowed = TRANSITIONS[state.phase]
     const target = allowed[event.type]
     if (!target) {

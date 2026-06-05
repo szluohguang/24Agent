@@ -10,6 +10,8 @@ export type WsMessage =
   | { type: 'error'; message: string }
   | { type: 'follow-up-prompt'; sessionId: string; prompt: string }
   | { type: 'comet-state-update'; state: import('../types').CometEngineState }
+  | { type: 'eagle-state-update'; state: import('../types').EagleEngineState }
+  | { type: 'eagle-mode-update'; mode: string }
   | { type: 'system-log'; entry: import('../types').SystemLogEntry }
 
 /**

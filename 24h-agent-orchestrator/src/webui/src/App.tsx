@@ -222,6 +222,15 @@ export function App() {
         if (msg.state) setCometState(msg.state)
         break
       }
+      case 'eagle-state-update': {
+        const msg = lastMessage as { type: 'eagle-state-update'; state: CometEngineState }
+        if (msg.state) setCometState(msg.state)
+        break
+      }
+      case 'eagle-mode-update': {
+        // mode 变更由 HealthDashboard 单独拉取，不影响 cometState
+        break
+      }
       case 'system-log': {
         const msg2 = lastMessage as { type: 'system-log'; entry: SystemLogEntry }
         if (msg2.entry) setSystemLogs(prev => [...prev, msg2.entry])

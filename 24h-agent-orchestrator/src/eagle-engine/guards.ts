@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import crypto from 'node:crypto'
 import type { CometPhase, CometYamlState } from './types'
 
 export interface EagleGuardResult {
@@ -97,7 +98,6 @@ export class EagleGuards {
       // 校验 hash 一致性
       if (ctx.yamlState.handoff_hash) {
         const jsonContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'))
-        const crypto = await import('crypto')
         const computedHash = crypto.createHash('sha256').update(JSON.stringify(jsonContent)).digest('hex')
         if (computedHash !== ctx.yamlState.handoff_hash) {
           return { success: false, message: `Handoff context hash mismatch: expected=${ctx.yamlState.handoff_hash}, computed=${computedHash}` }

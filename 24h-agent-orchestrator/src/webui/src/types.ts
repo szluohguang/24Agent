@@ -68,6 +68,8 @@ export interface SystemLogEntry {
   acknowledged?: boolean
 }
 
+export type EagleEngineState = CometEngineState
+
 export interface CometEngineState {
   changeName: string
   phase: CometPhase

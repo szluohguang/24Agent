@@ -25,9 +25,9 @@ describe('EagleStateMachine', () => {
     expect(state.phase).toBe('design')
   })
 
-  it('rejects invalid transition', async () => {
+  it('rejects invalid transition', () => {
     const sm = new EagleStateMachine(TEST_YAML)
-    await expect(sm.transition({ type: 'verify-pass' })).rejects.toThrow()
+    expect(() => sm.transition({ type: 'verify-pass' })).toThrow()
   })
 
   it('performs double-write validation', async () => {

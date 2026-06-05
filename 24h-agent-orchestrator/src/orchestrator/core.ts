@@ -112,11 +112,11 @@ export class Orchestrator {
         if (nonArchive.length > 0) activeChange = nonArchive[0]
       } catch {}
 
-      const yamlPath = path.join(yamlRoot, activeChange, '.comet.yaml')
+      const yamlPath = path.join(yamlRoot, activeChange, '.eagle.yaml')
       if (fs.existsSync(orchestrationPath) && fs.existsSync(yamlPath)) {
         this.eagleEngine = new EagleOrchestrator(orchestrationPath, yamlPath, activeChange)
         this.eagleEngine.onStateChange((state) => {
-          this.broadcast?.({ type: 'comet-state-update', state })
+          this.broadcast?.({ type: 'eagle-state-update', state })
         })
         this.eagleEngine.start().catch(console.error)
       }

@@ -1,8 +1,7 @@
-import type { TaskNode } from '../webui/src/types'
 import type { SkillDef } from './SkillLoader'
 
 export interface PromptContext {
-  task: TaskNode
+  task: { id: string; description: string }
   skill: SkillDef
   projectContext: string
 }
