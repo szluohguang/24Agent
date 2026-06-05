@@ -1,0 +1,2 @@
+- [ ] 1. ProjectSettings.tsx: handleBrowse 替换为内嵌目录浏览器
+- [ ] 2. ProjectSettings.tsx: handleSave 后调用 POST /api/project/init-eagle

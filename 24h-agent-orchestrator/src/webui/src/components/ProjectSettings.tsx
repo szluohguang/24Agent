@@ -13,6 +13,11 @@ export function ProjectSettings() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<'saved' | 'error' | null>(null)
   const [optimizing, setOptimizing] = useState<'goal' | 'description' | null>(null)
+  const [browsing, setBrowsing] = useState(false)
+  const [entries, setEntries] = useState<Array<{ name: string; path: string }>>([])
+  const [currentBrowsePath, setCurrentBrowsePath] = useState('')
+  const [parentPath, setParentPath] = useState('')
+  const [browseErr, setBrowseErr] = useState('')
   const intl = useIntl()
 
   useEffect(() => {
@@ -33,6 +38,8 @@ export function ProjectSettings() {
         body: JSON.stringify(config),
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
+      // 目录变更时触发 Eagle 技能安装
+      fetch('/api/project/init-eagle', { method: 'POST' }).catch(() => {})
       setSaveMsg('saved')
       setTimeout(() => setSaveMsg(null), 2000)
     } catch (err) {
@@ -62,13 +69,22 @@ export function ProjectSettings() {
     }
   }
 
-  const handleBrowse = async () => {
+  const loadDir = async (path: string) => {
+    setBrowseErr('')
     try {
-      const handle = await window.showDirectoryPicker()
-      setConfig((prev) => ({ ...prev, directory: handle.name }))
-    } catch {
-      // 用户取消选择，不做处理
-    }
+      const res = await fetch('/api/fs/list?path=' + encodeURIComponent(path))
+      const data = await res.json()
+      setEntries(data.entries || [])
+      setCurrentBrowsePath(data.current || '')
+      setParentPath(data.parent || '')
+      if (data.error) setBrowseErr(data.error)
+    } catch { setBrowseErr('无法读取目录') }
+  }
+
+  const handleBrowse = async () => {
+    setBrowsing(true)
+    const startPath = config.directory.trim() || '/'
+    await loadDir(startPath)
   }
 
   const inputStyle: React.CSSProperties = {
@@ -107,6 +123,23 @@ export function ProjectSettings() {
               <FormattedMessage id="projectSettings.browse" />
             </button>
           </div>
+          {browsing && (
+            <div style={{ border: '1px solid #30363d', borderRadius: 6, marginTop: 6, background: '#0d1117', maxHeight: 200, overflow: 'auto' }}>
+              <div style={{ padding: '5px 8px', borderBottom: '1px solid #30363d', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                <button onClick={() => loadDir(parentPath)} disabled={currentBrowsePath === parentPath}
+                  style={{ background: 'none', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 12, padding: 0 }}>⬆</button>
+                <span style={{ color: '#8b949e', fontFamily: 'monospace', fontSize: 10, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentBrowsePath}</span>
+                <button onClick={() => setBrowsing(false)} style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+              </div>
+              {browseErr && <div style={{ padding: 6, color: '#f85149', fontSize: 11 }}>{browseErr}</div>}
+              {entries.map(e => (
+                <div key={e.path} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 12, borderBottom: '1px solid #21262d' }}
+                  onDoubleClick={() => loadDir(e.path)} onClick={() => { setConfig(prev => ({ ...prev, directory: e.path })); setBrowsing(false) }}>
+                  <span>📁</span><span style={{ color: '#c9d1d9' }}>{e.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
