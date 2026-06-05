@@ -1,5 +1,5 @@
 workflow: full
-phase: design
+phase: build
 design_doc: docs/superpowers/specs/2026-06-04-comet-code-engine-design.md
 plan: null
 base_ref: null
@@ -12,3 +12,5 @@ branch_status: pending
 created_at: 2026-06-04
 verified_at: null
 archived: false
+handoff_context: openspec/changes/comet-code-engine/.comet/handoff/design-context.json
+handoff_hash: pulled

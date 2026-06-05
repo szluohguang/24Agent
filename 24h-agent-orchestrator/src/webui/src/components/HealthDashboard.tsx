@@ -208,7 +208,17 @@ export function HealthDashboard({ agents, tasks, stale, budget, cometState }: { 
     <div style={{ opacity: stale ? 0.5 : 1, transition: 'opacity 0.3s', display: 'flex', flexDirection: 'column', flex: 1 }}>
       {/* Comet 状态 — 置顶 */}
       <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid #30363d' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 6 }}>Comet</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 6 }}>
+          Comet
+          <span style={{
+            display: 'inline-block', fontSize: 8, padding: '1px 5px', borderRadius: 6, marginLeft: 4,
+            background: '#1f6feb', color: '#fff', verticalAlign: 'middle', fontWeight: 500,
+          }}>Eagle</span>
+        </div>
+        <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 4 }}>
+          模式: <span style={{ color: '#58a6ff', fontWeight: 600 }}>auto</span>
+          <span style={{ marginLeft: 8 }}>技能: <span style={{ color: '#3fb950' }}>✓ 已加载</span></span>
+        </div>
         {!cometState || cometState.changeName === '(无活跃变更)' ? (
           <div style={{ fontSize: 11, color: '#8b949e', padding: '2px 0 6px' }}>
             无活跃变更。使用 /comet 开始新工作。

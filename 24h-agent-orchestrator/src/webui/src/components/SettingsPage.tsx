@@ -29,6 +29,24 @@ export function SettingsPage({ timelineEntries, budget, send, setBudget }: Setti
   const [tab, setTab] = useState<SettingsTab>('schedule')
   const [pluginUpdating, setPluginUpdating] = useState(false)
   const [pluginResult, setPluginResult] = useState<string | null>(null)
+  const [eagleMode, setEagleMode] = useState<string>('auto')
+
+  // Load eagle mode
+  React.useEffect(() => {
+    fetch('/api/config/eagle-mode').then(r => r.json()).then(d => {
+      if (d.mode) setEagleMode(d.mode)
+    }).catch(() => {})
+  }, [])
+
+  const handleEagleModeChange = async (mode: string) => {
+    setEagleMode(mode)
+    try {
+      await fetch('/api/config/eagle-mode', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      })
+    } catch {}
+  }
 
   const handlePluginUpdate = async () => {
     setPluginUpdating(true)
@@ -123,6 +141,25 @@ export function SettingsPage({ timelineEntries, budget, send, setBudget }: Setti
                   <FormattedMessage id="config.resetBudget" />
                 </button>
               </div>
+            </div>
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: 16, marginTop: 16 }}>
+              <h3 style={{ margin: '0 0 8px', color: '#c9d1d9', fontSize: 16 }}>Eagle 模式</h3>
+              <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 12 }}>
+                选择工作模式。自动模式下阶段流转无需确认；人工模式需用户确认每步操作。
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                {['auto', 'manual'].map(m => (
+                  <button key={m} onClick={() => handleEagleModeChange(m)}
+                    style={{
+                      padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+                      background: eagleMode === m ? '#238636' : '#21262d',
+                      color: '#fff', border: 'none',
+                    }}>{m === 'auto' ? '⚡ 自动' : '✋ 人工'}</button>
+                ))}
+              </div>
+              <span style={{ fontSize: 12, color: '#8b949e' }}>
+                当前: <strong>{eagleMode === 'auto' ? '全自动' : '人工干预'}</strong>
+              </span>
             </div>
             <div style={{ borderTop: '1px solid #30363d', paddingTop: 16, marginTop: 16 }}>
               <h3 style={{ margin: '0 0 8px', color: '#c9d1d9', fontSize: 16 }}>插件管理</h3>

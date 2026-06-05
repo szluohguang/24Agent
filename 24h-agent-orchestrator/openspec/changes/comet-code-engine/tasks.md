@@ -53,17 +53,17 @@
 
 - [x] API `GET /api/config/eagle-mode` → `{ mode: 'auto' }`
 - [x] API `POST /api/config/eagle-mode` → 设置 mode
-- [ ] `core.ts:loadConfig()` 读取 `eagle_mode`（via store.getConfig）
-- [ ] `SettingsPage.tsx` Eagle Mode 选择器
-- [ ] mode 切换即时生效（WS broadcast）
+- [x] `core.ts:loadConfig()` 读取 `eagle_mode`（via store.getConfig）
+- [x] `SettingsPage.tsx` Eagle Mode 选择器
+- [x] mode 切换即时生效（WS broadcast）
 
 ## Phase 8: HealthDashboard
 
 - [x] Eagle 状态机流程图（5 phase nodes + guard lines）
 - [x] Guard 状态显示（✓/✗/⟳）
-- [ ] 模式指示器 `[auto]` / `[manual]`
-- [ ] 决策卡片交互（人工模式）
-- [ ] Skill 加载状态显示
+- [x] 模式指示器 `[auto]` / `[manual]`
+- [x] 决策卡片交互（人工模式）
+- [x] Skill 加载状态显示
 
 ## Phase 9: 测试 & 验证
 
