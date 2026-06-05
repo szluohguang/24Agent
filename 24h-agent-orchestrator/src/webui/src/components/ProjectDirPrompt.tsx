@@ -62,7 +62,19 @@ export function ProjectDirPrompt({ onConfirm }: { onConfirm: (dir: string) => vo
         return
       }
       // 保存成功后触发 Eagle 技能安装
-      fetch('/api/project/init-eagle', { method: 'POST' }).catch(() => {})
+      try {
+        const initRes = await fetch('/api/project/init-eagle', { method: 'POST' })
+        const initData = await initRes.json()
+        if (initData.success) {
+          setError('✅ 项目目录已设置，Eagle 环境安装完成')
+        } else {
+          setError('⚠️ 目录已保存，但环境安装未完成: ' + (initData.message || '未知错误'))
+          return // 不关闭弹窗，让用户看到错误
+        }
+      } catch {
+        setError('⚠️ 目录已保存，但环境安装请求失败')
+        return
+      }
       onConfirm(dir.trim())
     } catch {
       setError('网络错误，请重试')

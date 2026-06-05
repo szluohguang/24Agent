@@ -1,0 +1,6 @@
+- [ ] 1. SkillChecker.ts: baseDir 解析到 repo 根目录（从 __dirname 上溯）
+- [ ] 2. api.ts: POST /api/project/init-eagle 增加 try/catch
+- [ ] 3. api.ts: init 成功后设置默认 eagle_mode
+- [ ] 4. ProjectDirPrompt.tsx: 安装完成后显示结果提示
+- [ ] 5. ProjectSettings.tsx: 安装完成后显示结果提示
+- [ ] 6. 验证 typecheck + 测试

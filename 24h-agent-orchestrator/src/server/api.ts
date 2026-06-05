@@ -438,13 +438,20 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
   // ── Project Init ──
 
   app.post('/api/project/init-eagle', async () => {
-    const { SkillChecker } = require('../eagle-engine/SkillChecker')
-    const store = (orchestrator as any).store
-    const config = store?.getProjectConfig?.()
-    if (!config?.directory) return { success: false, message: 'No project directory set' }
-    const checker = new SkillChecker(process.cwd())
-    const result = await checker.initAll(config.directory)
-    return result
+    try {
+      const { SkillChecker } = require('../eagle-engine/SkillChecker')
+      const store = (orchestrator as any).store
+      const config = store?.getProjectConfig?.()
+      if (!config?.directory) return { success: false, message: 'No project directory set' }
+      const checker = new SkillChecker()
+      const result = await checker.initAll(config.directory)
+      if (result.success && store?.setConfig) {
+        store.setConfig('eagle_mode', 'auto')
+      }
+      return result
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : String(e) }
+    }
   })
 
   app.post('/api/plugins/update', async () => {

@@ -11,7 +11,7 @@ export function ProjectSettings() {
   const [config, setConfig] = useState<ProjectConfig>({ directory: '', goal: '', description: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState<'saved' | 'error' | null>(null)
+  const [saveMsg, setSaveMsg] = useState<'saved' | 'error' | 'warning' | null>(null)
   const [optimizing, setOptimizing] = useState<'goal' | 'description' | null>(null)
   const [browsing, setBrowsing] = useState(false)
   const [entries, setEntries] = useState<Array<{ name: string; path: string }>>([])
@@ -38,10 +38,23 @@ export function ProjectSettings() {
         body: JSON.stringify(config),
       })
       if (!res.ok) throw new Error('HTTP ' + res.status)
-      // 目录变更时触发 Eagle 技能安装
-      fetch('/api/project/init-eagle', { method: 'POST' }).catch(() => {})
-      setSaveMsg('saved')
-      setTimeout(() => setSaveMsg(null), 2000)
+      // 目录变更时触发 Eagle 技能安装并反馈结果
+      try {
+        const initRes = await fetch('/api/project/init-eagle', { method: 'POST' })
+        const initData = await initRes.json()
+        if (initData.success) {
+          setSaveMsg('saved')
+        } else {
+          setSaveMsg('warning')
+          setSaving(false)
+          return
+        }
+      } catch {
+        setSaveMsg('warning')
+        setSaving(false)
+        return
+      }
+      setTimeout(() => setSaveMsg(null), 3000)
     } catch (err) {
       console.error('Failed to save project config', err)
       setSaveMsg('error')
@@ -214,6 +227,11 @@ export function ProjectSettings() {
           {saveMsg === 'error' && (
             <span style={{ color: '#f85149', fontSize: 12 }}>
               <FormattedMessage id="projectSettings.saveError" />
+            </span>
+          )}
+          {saveMsg === 'warning' && (
+            <span style={{ color: '#d29922', fontSize: 12 }}>
+              ⚠️ 目录已保存，Eagle 环境安装未完成
             </span>
           )}
         </div>

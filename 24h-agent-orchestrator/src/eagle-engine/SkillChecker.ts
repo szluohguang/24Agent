@@ -1,7 +1,12 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 import { exec } from 'child_process'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// 从 src/eagle-engine/ 上溯 3 级到 repo 根目录
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..')
 
 export interface SkillCheckResult {
   openspecReady: boolean
@@ -26,7 +31,7 @@ const SUPERPOWER_SKILLS = [
 const GLOBAL_SUPERPOWERS_DIR = path.join(os.homedir(), '.config', 'opencode', 'skills', 'superpowers')
 
 export class SkillChecker {
-  constructor(private baseDir: string) {}
+  constructor(private baseDir: string = REPO_ROOT) {}
 
   check(): SkillCheckResult {
     const missing: string[] = []

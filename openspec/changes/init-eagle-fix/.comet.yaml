@@ -1,0 +1,15 @@
+workflow: full
+phase: build
+build_mode: direct
+isolation: branch
+verify_mode: null
+base_ref: 3b9bcb938736e49e4c08ece9ef1f460b482aa112
+design_doc: null
+plan: null
+verify_result: pending
+verification_report: null
+branch_status: pending
+created_at: 2026-06-05
+verified_at: null
+archived: false
+direct_override: true
